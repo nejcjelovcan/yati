@@ -1,0 +1,59 @@
+# COMMENTS
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2014-03-19 15:16+0100\n"
+"PO-Revision-Date: 2014-03-24 12:34+0100\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: sl <LL@li.org>\n"
+"Plural-Forms: nplurals=4; plural=(n%100==1 ? 0 : n%100==2 ? 1 : n%100==3 || "
+"n%100==4 ? 2 : 3)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 0.9.6\n"
+
+# User comment 1
+# User comment 2
+#. Auto comment 1
+#. Auto comment 2
+#: _media/static/smileplayer/engines/veng_html5.js:152
+msgid "Your browser does not support html5 video"
+msgstr "Vaš brskalnik ne podpira HTML5 videa"
+
+#: _media/static/smileplayer/engines/veng_html5.js:162
+msgid ""
+"Your browser does not support playback of available video formats. Please "
+"install Adobe Flash player or upgrade to a more modern browser."
+msgstr ""
+
+#: _media/static/smileplayer/engines/veng_html5.js:163
+msgid ""
+"Requested video is part of a historic video archive. Due to technical "
+"reasons it is currently not available for viewing until it is transcoded."
+msgstr ""
+
+#: _media/static/smileplayer/engines/veng_html5.js:164
+msgid "This video is available only on desktop browsers with Flash player"
+msgstr ""
+
+#: _media/static/smileplayer/gui/controls.js:141
+msgid "Previous slide"
+msgstr "Prejšnja prosojnica"
+
+#: _media/static/smileplayer/gui/controls.js:142
+msgid "Next slide"
+msgstr "Naslednja prosojnica"
+
+#: _media/static/smileplayer/gui/controls.js:143
+msgid "Play/Pause"
+msgstr "Predvajaj/Ustavi"
+
+#: _media/static/smileplayer/gui/nonexisting.js:666
+msgid "Slide"
+msgid_plural "Slides"
+msgstr[0] "Prosojnica"
+msgstr[1] "Prosojnici"
+msgstr[2] "Prosojnice"
+msgstr[3] "Prosojnic"

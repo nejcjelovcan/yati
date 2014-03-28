@@ -1,0 +1,9 @@
+Django>=1.5
+djangorestframework>=2.3
+translate-toolkit>=1.11.0
+psycopg2
+jsonfield>=0.9.20
+django-dbarray>=0.2
+south
+python-dateutil>=2.2
+python-Levenshtein>=0.11.2
