@@ -11,5 +11,5 @@ urlpatterns = patterns('',
     # url(r'^admin/', include(admin.site.urls)),
 
     url(r'^yati/', include('yati_api.urls')),
-    url(r'', 'yati_api.views.main', 'yati-main')
+    url(r'', 'yati_api.views.main', name='yati-main')
 )

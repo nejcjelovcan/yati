@@ -60,8 +60,8 @@ import datetime
 import StringIO
 
 import Levenshtein
-#import jsonfield
 import dbarray
+from model_utils.managers import PassThroughManager
 
 from translate.tools import poterminology
 from translate.storage import pypo, poparser
@@ -71,22 +71,6 @@ from django.db import models
 from django.db.models.query import Q
 from django.conf import settings
 from django.utils.translation import ugettext as _
-
-#INTERFACE_LANGUAGES = sorted([(l, dict(settings.LANGUAGES)[l]) for l in settings.INTERFACE_LANGUAGES], key=lambda x: x[1])
-
-# class Project(models.Model):
-#     name = models.CharField(max_length=255)
-
-#     def create_or_get_pofile(self, language, path=None):
-#         try: return self.pofiles.get(path=path, language=language)
-#         except Pofile.DoesNotExist:
-#             return self.pofiles.create(path=path, language=language)
-
-#     def import_pofile(self, language, path=None):
-#         pofile = self.create_or_get_pofile(language, path)
-
-#     def __unicode__(self):
-#         return u'"%s"'%self.name
 
 LANGUAGES = sorted(settings.LANGUAGES, key=lambda x: x[1])
 
@@ -98,6 +82,21 @@ class Project(models.Model):
 
     def __unicode__(self):
         return u'"%s"'%self.name
+
+    def get_orphan_units(self):
+        return self._get_orphan(Unit).order_by('store', 'msgid').distinct('store', 'msgid')
+        
+    def get_orphan_locations(self):
+        return self._get_orphan(Location).order_by('filename').distinct('filename').values_list('filename', flat=True)
+
+    def _get_orphan(self, model_cls):
+        q = None
+        qs = model_cls.objects.all()
+        for module in self.modules.all():
+            q1 = qs.by_module(module, exclude=True, query=True)
+            q = q | q1 if q else q1
+        if q: return qs.filter(q)
+        return qs
 
 class Store(models.Model):
     """
@@ -204,9 +203,27 @@ class Store(models.Model):
             pofile.settargetlanguage(self.targetlanguage)
             if self.header:
                 pofile.units = [self.header.to_pounit()]
-        for unit in self.units.exclude(index=0, msgid=['']).all().order_by('index'):
+        for unit in self.units.exclude_header().order_by('index'):
             pofile.addunit(unit.to_pounit())
         return pofile
+
+class UnitQuerySet(models.query.QuerySet):
+    def by_module(self, module, exclude=False, query=False):
+        """
+        Warning: this can return duplicate units
+        use .order_by('msgid').distinct('msgid')
+        (or possibly with 'index' - but this field is yet to be defined functionally)
+        """
+        q = Q(
+            store__project=module.project,
+            locations__filename__icontains=module.pattern
+        )
+        if exclude: q = ~q
+        if query: return q
+        return self.filter(q)
+
+    def exclude_header(self):
+        return self.exclude(index=0, msgid=[''])
 
 class Unit(models.Model):
     index = models.IntegerField(null=True)
@@ -216,10 +233,10 @@ class Unit(models.Model):
     comments = models.TextField(default='')
     #last_read
     #last_write
-        # unit.getnotes() returns .othercomments and .automaticcomments already concated with \n's
-        # What about msgidcomments and msgid_pluralcomments ???
     #prev_msgid ???
     #@TODO unique(store, msgid) ?
+
+    objects = PassThroughManager.for_queryset_class(UnitQuerySet)()
 
     def hasplural(self):
         return len(self.msgid) > 1
@@ -232,6 +249,10 @@ class Unit(models.Model):
         for attr in ('msgid', 'msgstr', 'comments'):
             setattr(self, attr, getattr(unit, attr))
         self.save()
+        self.locations.all().delete()
+        for location in pounit.getlocations():
+            fn, lineno = location.split(':')
+            self.locations.create(filename=fn, lineno=lineno)
 
     def __unicode__(self):
         if self.hasplural():
@@ -270,10 +291,25 @@ class Unit(models.Model):
         if attr == 'source' and pounit.source == []: return None
         return map(unicode, getattr(pounit, attr).strings if pounit.hasplural() else [getattr(pounit, attr)])
 
+class LocationQuerySet(models.query.QuerySet):
+    def distinct_filenames(self):
+        return self.distinct('filename').order_by('filename').values_list('filename', flat=True)
+
+    def by_module(self, module, exclude=False, query=False):
+        q = Q(
+            unit__store__project=module.project,
+            filename__icontains=module.pattern
+        )
+        if exclude: q = ~q
+        if query: return q
+        return self.filter(q)
+
 class Location(models.Model):
     unit = models.ForeignKey(Unit, related_name='locations')
     filename = models.TextField()
     lineno = models.IntegerField()
+
+    objects = PassThroughManager.for_queryset_class(LocationQuerySet)()
 
     def __unicode__(self):
         return u'%s:%s'%(self.filename, self.lineno)
@@ -288,5 +324,20 @@ class Module(models.Model):
     name = models.CharField(max_length=255)
     pattern = models.TextField(null=True)
 
+    @property
+    def units(self): return Unit.objects.all().by_module(self).order_by('index').distinct('index')
+
     def __unicode__(self):
         return u'%s: %s (%s)'%(self.project.name, self.name, self.pattern)
+
+
+"""
+[{'id': 2, 'name': u'Custom VLN', 'description': None, 'pattern': u'_custom/vln/'},
+ {'id': 4, 'name': u'Video player', 'description': None, 'pattern': u'/smileplayer/'},
+ {'id': 3, 'name': u'Janitor', 'description': None, 'pattern': u'janitor/'},
+ {'id': 6, 'name': u'Mailing', 'description': None, 'pattern': u'mailing/'},
+ {'id': 7, 'name': u'Campaigns', 'description': None, 'pattern': u'campaigns/'},
+ {'id': 5, 'name': u'Registration', 'description': None, 'pattern': u'/registration'},
+ {'id': 8, 'name': u'Payments', 'description': None, 'pattern': u'payments/'},
+ {'id': 9, 'name': u'Views', 'description': None, 'pattern': u'vl/;api/;attachments/;authviidea/;categories/;jobs/;permissions/;statistics/'}]
+"""

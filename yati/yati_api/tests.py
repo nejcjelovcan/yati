@@ -18,10 +18,8 @@ class ModelTest(TestCase):
         self.store = self.project.stores.create(source=os.path.join(PATH, 'testmedia/test.sl.po'), targetlanguage='sl')
 
     def testReadWritePofile(self):
+        "Read and write po file, check that they're the same"
         self.store.update()
-        #print 'UNITS', self.store.units.all()
-        #for unit in self.store.units.all():
-        #    print unit.comments
 
         buf = StringIO.StringIO()
         self.store.write(handle=buf)
@@ -29,12 +27,22 @@ class ModelTest(TestCase):
 
         # check that files are identical!
         f = open(self.store.source, 'r')
-        #print ''.join(buf.readlines())
-        #return
         for line in f.readlines():
             self.assertEqual(line, buf.readline())
 
         f.close()
+
+    def testModules(self):
+        self.store.update()
+        
+        self.assertEqual(self.project.get_orphan_units().count(), Unit.objects.all().count())
+        self.assertEqual(self.project.get_orphan_locations().count(), 3)
+
+        mod = Module.objects.create(project=self.project, name='Engine', pattern='/engines/')
+        self.assertEqual(mod.units.count(), 4)
+        self.assertEqual(self.project.get_orphan_units().count(), Unit.objects.all().count() - mod.units.count())
+        self.assertEqual(self.project.get_orphan_locations().count(), 2)
+
 
     # def testTerminology(self):
     #     self.pofile.read()

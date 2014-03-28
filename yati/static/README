@@ -1,0 +1,6 @@
+Django static files will be deployed here
+
+cd yati/yati/
+./manage.py collectstatic --clear --link
+
+If you want to change the static files destination or urls, set STATIC_ROOT and STATIC_URL in settings.py

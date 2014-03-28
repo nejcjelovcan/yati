@@ -39,6 +39,7 @@ msgid "This video is available only on desktop browsers with Flash player"
 msgstr ""
 
 #: _media/static/smileplayer/gui/controls.js:141
+#: _media/static/smileplayer/gui/controls.js:145
 msgid "Previous slide"
 msgstr "Prejšnja prosojnica"
 

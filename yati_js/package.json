@@ -1,0 +1,20 @@
+{
+  "name": "yati_js",
+  "title": "Yet another translation interface",
+  "version": "0.1.0",
+  "description": "We make interface. We translate.",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "homepage": "http://www.viidea.com",
+  "author": "Nejc Jelovčan",
+  "license": "ISC",
+  "devDependencies": {
+    "grunt": "~0.4.4",
+    "grunt-contrib-concat": "~0.3.0",
+    "grunt-contrib-uglify": "~0.2.0",
+    "grunt-contrib-clean": "~0.5.0",
+    "grunt-contrib-copy": "~0.5.0"
+  }
+}
