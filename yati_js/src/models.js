@@ -21,8 +21,7 @@
         urlRoot: urlRoot+'projects/',
         defaults: {
             name: 'Project',
-            modules: [],
-            module: null
+            modules: []
         },
         relations: [
             {
@@ -51,12 +50,12 @@
         model: yati.models.Language
     });
 
-    yati.models.Module = barebone.Model.extend(_({
+    yati.models.Module = barebone.Model.extend({
         urlRoot: urlRoot+'modules/',
+        // @TODO fsck this shizzle - check nested Many collections because they're fishy
         defaults: {
-            language: 'en',
             units: []
-        },
+        }, 
         relations: [
             {
                 type: Backbone.Many,
@@ -64,35 +63,12 @@
                 relatedModel: 'yati.models.Unit',
                 collectionType: 'yati.models.Units'
             }
-        ],
-        initialize: function () {
-            _(this).bindAll('getProgress');
-            this.get('units').setQueryParams({module_id: this.get('id'), language: this.get('language')}, {silent: true});
-            this.on('change:language', function () { this.get('units').setQueryParams({language: this.get('language')}, {silent: true}); }, this);
-        }
-    }).extend(UnitSet));
+        ]
+    });
     
     yati.models.Modules = barebone.Collection.extend({
         urlRoot: urlRoot+'modules/',
-        model: yati.models.Module,
-        initialize: function (items, options) {
-            options || (options = {});
-            if (options.language) this.language = options.language;
-            if (this.language) {
-                this.on('add', function (model) {
-                    model.set('language', this.language);
-                }, this);
-                this.setQueryParams({language: this.language}, {silent: true});
-            }
-        }
-    });
-
-    yati.models.Storage = barebone.Model.extend({
-        urlRoot: urlRoot+'storages/',
-        defaults: {
-            sourcelanguage: '',
-            targetlanguage: ''
-        }
+        model: yati.models.Module
     });
 
     yati.models.Unit = barebone.Model.extend({
@@ -116,10 +92,14 @@
             }
         ],
         isPlural: function () {
-            return !!this.get('msgid').length;
+            return !!(this.get('msgid')||[]).length;
         },
         parse: function (data) {
-            data.msgid = _(data.msgid).map(function (s) { return {value: s}; });
+            if (data && (data.msgid||data.msgstr)) {
+                data.msgid = _(data.msgid).map(function (s, i) { return {value: s, id: i+1}; });
+                data.msgstr = _(data.msgstr).map(function (s, i) { return {value: s, id: i+1}; });
+            }
+            console.log(JSON.stringify(data));
             return data;
         }
     });

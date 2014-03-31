@@ -30,8 +30,8 @@ class UnitViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         module_id = self.request.GET.get('module_id')
         language = self.request.GET.get('language')
-        if not language in map(lambda l: l[0], LANGUAGES):
-            raise Exception("Must provide language parameter")
+        if not language in get_setting('LANGUAGES'):
+            raise Exception("Must provide valid language parameter")
         qs = Unit.objects.all().filter(store__targetlanguage=language)
         if module_id:
             qs = qs.by_module(Module.objects.get(id=module_id))

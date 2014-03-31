@@ -1,0 +1,12 @@
+.progress .meter {
+    padding: 2px;
+    font-size: 12px;
+    vertical-align: middle;
+    color: white;
+    text-shadow:
+   -1px -1px 0 #000,  
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+     1px 1px 0 #000;
+    
+}

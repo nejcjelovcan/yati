@@ -21,7 +21,17 @@
     </section>
   </nav>
 
-  <section data-bind="block: view() == 'index', template: {name: 'index-view', data: $root}"></section>
-  <section data-bind="block: view() == 'project', template: {name: 'project-view', data: $root.project}"></section>
-  <section data-bind="block: view() == 'module', template: {name: 'module-view', data: $root.module}"></section>
+  <ul class="breadcrumbs">
+    <li><a data-bind="attr: {href: '#' + language()}">Home</a></li>
+    <li data-bind="css: {hide: view() == 'index', current: view() == 'project'}"><a data-bind="text: project().name(), attr: {href: '#' + language() + '/' + project().id()}"></a></li>
+    <li data-bind="css: {hide: view() == 'index' || view() == 'project', current: view() == 'module'}"><a data-bind="text: module().name(), attr: {href: '#' + language() + '/' + project().id() + '/' + module().id()}"></a></li>
+    
+    <!--li><a href="#">Features</a></li>
+    <li class="unavailable"><a href="#">Gene Splicing</a></li>
+    <li class="current"><a href="#">Cloning</a></li-->
+  </ul>
+
+  <section data-bind="css: {hide: view() != 'index'}, template: {name: 'index-view', data: $root}"></section>
+  <section data-bind="css: {hide: view() != 'project'}, template: {name: 'project-view', data: $root.project}"></section>
+  <section data-bind="css: {hide: view() != 'module'}, template: {name: 'module-view', data: $root.module}"></section>
 </section>

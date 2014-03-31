@@ -26,15 +26,15 @@
         }
     }));
 
-    yati.app = new (barebone.Model.extend({
+    yati.App = barebone.Model.extend({
         defaults: {
             title: 'Translation',
-            language: 'sl',
+            language: 'sl', // currently selected language
             languages: [],
             languageDisplay: 'Slovenian',
             projects: [],
-            project: {},
-            module: {},
+            project: {},    // currently selected project
+            module: {},     // currently selected module
             view: 'index'
         },
         relations: [
@@ -65,12 +65,19 @@
             _(this).bindAll('on_language_changed');
             this.on('change:language', this.on_language_changed);
             this.on('sync:languages', this.on_language_changed);
+            this.on('change:module', this.on_module_changed);
         },
         on_language_changed: function () {
             var lang = this.get('languages').get(this.get('language'));
             this.set('languageDisplay', (lang && lang.get('display')||'None'));
             this.get('projects').setQueryParams({ language: this.get('language') }).reset();
+            this.get('module').get('units').setQueryParams({ language: this.get('language') }, {silent: true}).reset();
+        },
+        on_module_changed: function () {
+            this.get('module').get('units').setQueryParams({ module_id: this.get('module').get('id'), language: this.get('language') }, {silent: !this.get('module').get('id')});
         }
-    }));
+    });
+
+    yati.app = new yati.App;
 
 }(yati, Backbone, barebone));

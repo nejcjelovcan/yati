@@ -12,16 +12,12 @@ class ArrayField(fields.CharField):
     Array field for Unit.msgid and Unit.msgstr
     
     @TODO this is read-only and defaults to "" instead of []
+    @TODO wtf
     """
     type_name = 'ArrayField'
     type_label = 'list'
     form_field_class = forms.CharField
     widget = forms.Textarea
-
-    def from_native(self, value):
-        if isinstance(value, six.string_types) or value is None:
-            return value
-        return json.dumps(value)
 
 class UnitSetCounts(object):
     def get_count(self, model):
@@ -56,11 +52,10 @@ class LocationSerializer(serializers.ModelSerializer):
 class UnitSerializer(serializers.ModelSerializer):
     class Meta:
         model = Unit
-        fields = ('id', 'msgid', 'msgstr', 'comments', 'locations')
+        fields = ('id', 'msgid', 'msgstr', 'comments')
 
     msgid = ArrayField()
     msgstr = ArrayField()
-    locations = LocationSerializer(many=True)
 
 class LanguageSerializer(serializers.Serializer):
     "settings.LANGUAGES serializer"
