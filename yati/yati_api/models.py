@@ -72,12 +72,12 @@ from django.db.models.query import Q
 from django.conf import settings
 from django.utils.translation import ugettext as _
 
-LANGUAGES = sorted(settings.LANGUAGES, key=lambda x: x[1])
-
 class YatiException(Exception):
     pass
 
 class Project(models.Model):
+    unit_manager_filter = 'by_project'
+
     name = models.CharField(max_length=255)
 
     def __unicode__(self):
@@ -93,10 +93,14 @@ class Project(models.Model):
         q = None
         qs = model_cls.objects.all()
         for module in self.modules.all():
-            q1 = qs.by_module(module, exclude=True, query=True)
+            q1 = qs.by_module(module, query=True)
             q = q | q1 if q else q1
-        if q: return qs.filter(q)
+        if q: return qs.exclude(q)
         return qs
+
+    @property
+    def units(self):
+        return Unit.objects.by_project(self).order_by('id').distinct('id')
 
 class Store(models.Model):
     """
@@ -115,8 +119,8 @@ class Store(models.Model):
     type = models.CharField(choices=TYPE_CHOICES, default='po', max_length=100)
     project = models.ForeignKey(Project, related_name='stores')
     source = models.TextField(_('Store source (e.g. filename)'), null=True)
-    sourcelanguage = models.CharField(choices=LANGUAGES, default='en', max_length=10)
-    targetlanguage = models.CharField(choices=LANGUAGES, max_length=10, null=False, blank=False)
+    sourcelanguage = models.CharField(choices=settings.LANGUAGES, default='en', max_length=10)
+    targetlanguage = models.CharField(choices=settings.LANGUAGES, max_length=10, null=False, blank=False)
     last_read = models.DateTimeField(_('Last read time'), blank=True, null=True)
     last_write = models.DateTimeField(_('Last write time'), blank=True, null=True)
 
@@ -222,8 +226,30 @@ class UnitQuerySet(models.query.QuerySet):
         if query: return q
         return self.filter(q)
 
+    def by_project(self, project):
+        return self.filter(store__project=project)
+
+    def by_language(self, target=None, source=None):
+        assert target or source, "Specify target our source language"
+        q, q1 = None, None
+        if target: q = Q(store__targetlanguage=target)
+        if source: q1 = Q(store__sourcelanguage=source)
+        q = q & q1 if q else q1
+        return self.filter(q)
+
     def exclude_header(self):
         return self.exclude(index=0, msgid=[''])
+
+    def q_done(self):
+        return Q(msgid=[''])|~(Q(msgstr=[''])|Q(msgstr=['','']))
+
+    def done(self):
+        # @TODO check plurals according to language
+        return self.filter(self.q_done())
+
+    def undone(self):
+        return self.exclude(self.q_done())
+
 
 class Unit(models.Model):
     index = models.IntegerField(null=True)
@@ -320,12 +346,15 @@ class Module(models.Model):
 
     This is to be cross-language
     """
+    unit_manager_filter = 'by_module'
+
     project = models.ForeignKey(Project, related_name='modules')
     name = models.CharField(max_length=255)
     pattern = models.TextField(null=True)
 
     @property
-    def units(self): return Unit.objects.all().by_module(self).order_by('index').distinct('index')
+    def units(self):
+        return Unit.objects.all().by_module(self).order_by('index').distinct('index')
 
     def __unicode__(self):
         return u'%s: %s (%s)'%(self.project.name, self.name, self.pattern)

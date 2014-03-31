@@ -23,22 +23,35 @@ class ArrayField(fields.CharField):
             return value
         return json.dumps(value)
 
-class ModuleSerializer(serializers.ModelSerializer):
+class UnitSetCounts(object):
+    def get_count(self, model):
+        return [model.units.count(), model.units.done().count()]
+
+class ModuleSerializer(serializers.ModelSerializer, UnitSetCounts):
     class Meta:
         model = Module
-        fields = ('id', 'name', 'pattern')
+        fields = ('id', 'name', 'pattern', 'units_count')
 
-class ProjectSerializer(serializers.ModelSerializer):
+    units_count = serializers.SerializerMethodField('get_count')
+
+
+class ProjectSerializer(serializers.ModelSerializer, UnitSetCounts):
     class Meta:
         model = Project
-        fields = ('id', 'name', 'modules')
+        fields = ('id', 'name', 'modules', 'units_count')
 
     modules = ModuleSerializer(many=True)
+    units_count = serializers.SerializerMethodField('get_count')
 
 class StoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Store
         fields = ('id', 'sourcelanguage', 'targetlanguage', 'source')
+
+class LocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = ('filename', 'lineno')
 
 class UnitSerializer(serializers.ModelSerializer):
     class Meta:
@@ -47,6 +60,7 @@ class UnitSerializer(serializers.ModelSerializer):
 
     msgid = ArrayField()
     msgstr = ArrayField()
+    locations = LocationSerializer(many=True)
 
 class LanguageSerializer(serializers.Serializer):
     "settings.LANGUAGES serializer"

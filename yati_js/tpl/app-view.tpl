@@ -21,6 +21,7 @@
     </section>
   </nav>
 
-  <section data-bind="block: view() == 'index', template: {name: 'module-view', data: $root}"></section>
-  <section data-bind="block: view() == 'module', template: {name: 'message-view', data: module}"></section>
+  <section data-bind="block: view() == 'index', template: {name: 'index-view', data: $root}"></section>
+  <section data-bind="block: view() == 'project', template: {name: 'project-view', data: $root.project}"></section>
+  <section data-bind="block: view() == 'module', template: {name: 'module-view', data: $root.module}"></section>
 </section>

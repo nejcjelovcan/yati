@@ -6,8 +6,4 @@ yati/static/
 yati/yati_api/static/yati/js/
 yati/yati_api/templates/tpl/
 yati_js/node_modules/
-bin
-include
-lib
-local
-share
+env

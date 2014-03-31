@@ -3,16 +3,25 @@
         initialize: function () {
             this.route('', 'index');
             this.route(':language', 'index');
-            this.route(':language/:module_id', 'module');
+            this.route(':language/:project_id', 'project');
+            this.route(':language/:project_id/:module_id', 'module');
         },
         index: function (language) {
             yati.app.set({language: language||'sl', view: 'index'});
         },
-        module: function (language, module_id) {
-            if (!yati.app.get('modules').length) {
-                yati.app.get('modules').once('sync', function () {this.module(language, module_id); }, this);
+        project: function (language, project_id) {
+            if (!yati.app.get('projects').length) {
+                yati.app.get('projects').once('sync', function () { this.project(language, project_id); }, this);
             } else {
-                yati.app.set({language: language||'sl', view: 'module', module: yati.app.get('modules').get(module_id)});
+                yati.app.set({language: language||'sl', view: 'project', project: yati.app.get('projects').get(project_id)});
+            }
+        },
+        module: function (language, project_id, module_id) {
+            if (!yati.app.get('projects').length) {
+                yati.app.get('projects').once('sync', function () { this.module(language, project_id, module_id); }, this);
+            } else {
+                var prj = yati.app.get('projects').get(project_id);
+                yati.app.set({language: language||'sl', view: 'module', project: prj, module: prj.get('modules').get(module_id)});
             }
         }
     }));
@@ -23,8 +32,9 @@
             language: 'sl',
             languages: [],
             languageDisplay: 'Slovenian',
-            module: null,
-            modules: [],
+            projects: [],
+            project: {},
+            module: {},
             view: 'index'
         },
         relations: [
@@ -36,9 +46,19 @@
             },
             {
                 type: Backbone.Many,
-                key: 'modules',
-                relatedModel: 'yati.models.Module',
-                collectionType: 'yati.models.Modules'
+                key: 'projects',
+                relatedModel: 'yati.models.Project',
+                collectionType: 'yati.models.Projects'
+            },
+            {
+                type: Backbone.One,
+                key: 'project',
+                relatedModel: 'yati.models.Project'
+            },
+            {
+                type: Backbone.One,
+                key: 'module',
+                relatedModel: 'yati.models.Module'
             }
         ],
         initialize: function (attrs, options) {
@@ -49,7 +69,7 @@
         on_language_changed: function () {
             var lang = this.get('languages').get(this.get('language'));
             this.set('languageDisplay', (lang && lang.get('display')||'None'));
-            this.get('modules').setQueryParams({ language: this.get('language') }).reset();
+            this.get('projects').setQueryParams({ language: this.get('language') }).reset();
         }
     }));
 

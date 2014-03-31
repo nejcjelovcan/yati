@@ -34,12 +34,18 @@ module.exports = function(grunt) {
             tpl: {
                 src: 'tpl/*',
                 dest: dest + 'templates/'
+            },
+            devel: {
+                expand: true,
+                flatten: true,
+                src: 'src/*',
+                dest: dest + 'static/yati/js/'
             }
         }/*,
         clean: [dest+'static/yati/js/*.js', dest+'templates/tpl/*.tpl']*/
     });
 
-    grunt.registerTask('build', ['concat:yati', 'copy:ext', 'copy:tpl']);
+    grunt.registerTask('build', ['concat:yati', 'copy:ext', 'copy:tpl', 'copy:devel']);
     grunt.registerTask('default', ['build']);
 
 };

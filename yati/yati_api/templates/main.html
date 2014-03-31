@@ -20,14 +20,17 @@
     <script src="https://cdn.jsdelivr.net/knockout/3.1.0/knockout.js"></script>
     <script src="{% static "yati/js/knockback-core.min.js" %}"></script>
 
-    <script src="{% static "yati/js/yati.js" %}"></script>
+    <script src="{% static "yati/js/core.js" %}"></script>
+    <script src="{% static "yati/js/models.js" %}"></script>
+    <script src="{% static "yati/js/views.js" %}"></script>
+    <script src="{% static "yati/js/app.js" %}"></script>
   </head>
 
   <body>
     {% include "tpl/app-view.tpl" %}
-    <script type="text/x-jquery-tmpl" id="module-view">{% include "tpl/module-view.tpl" %}</script>
-    <script type="text/x-jquery-tmpl" id="message-view">{% include "tpl/message-view.tpl" %}</script>    
+    <script type="text/x-jquery-tmpl" id="index-view">{% include "tpl/index-view.tpl" %}</script>
+    <script type="text/x-jquery-tmpl" id="project-view">{% include "tpl/project-view.tpl" %}</script>    
+    <script type="text/x-jquery-tmpl" id="module-view">{% include "tpl/module-view.tpl" %}</script>    
   </body>
 
 </html>
-
