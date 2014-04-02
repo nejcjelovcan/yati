@@ -1,7 +1,0 @@
-Javascripts will be deployed to this directory
-
-Do this:
-cd yati/yati_js/
-npm install
-grunt
-

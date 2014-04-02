@@ -5,10 +5,11 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.loadNpmTasks('grunt-contrib-clean');
-    grunt.loadNpmTasks('grunt-contrib-copy');
+    grunt.loadNpmTasks('grunt-contrib-symlink');
 
     var pkg = grunt.file.readJSON(__filename.split('/').slice(0, -1).concat(['package.json']).join('/')),
-        dest = '../yati/yati_api/';
+        dest_static = 'dist/static/',
+        dest_tpl = 'dist/templates/';
 
     // Project configuration.
     grunt.initConfig({
@@ -21,37 +22,39 @@ module.exports = function(grunt) {
                     'src/views.js',
                     'src/app.js'
                 ],
-                dest: dest + 'static/yati/js/yati.js'
+                dest: dest_static + 'yati/js/yati.js'
             }
         },
-        copy: {
+        symlink: {
             ext: {
                 expand: true,
-                flatten: true,
-                src: 'ext/*',
-                dest: dest + 'static/yati/js/'
+                cwd: 'ext',
+                src: ['*'],
+                dest: dest_static + 'yati/js/'
             },
             tpl: {
-                src: 'tpl/*',
-                dest: dest + 'templates/'
+                expand: true,
+                cwd: 'tpl',
+                src: ['*'],
+                dest: dest_tpl
             },
             devel: {
                 expand: true,
-                flatten: true,
-                src: 'src/*',
-                dest: dest + 'static/yati/js/'
+                cwd: 'src',
+                src: ['*'],
+                dest: dest_static + 'yati/js/'
             },
             css: {
                 expand: true,
-                flatten: true,
-                src: 'css/*',
-                dest: dest + 'static/yati/css/'
+                cwd: 'css',
+                src: ['*'],
+                dest: dest_static + 'yati/css/'
             }
-        }/*,
-        clean: [dest+'static/yati/js/*.js', dest+'templates/tpl/*.tpl']*/
+        },
+        clean: [dest_static+'*', dest_tpl + '*']
     });
 
-    grunt.registerTask('build', ['concat:yati', 'copy:ext', 'copy:tpl', 'copy:devel', 'copy:css']);
+    grunt.registerTask('build', ['clean', 'concat:yati', 'symlink:ext', 'symlink:tpl', 'symlink:devel', 'symlink:css']);
     grunt.registerTask('default', ['build']);
 
 };
