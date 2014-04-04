@@ -218,10 +218,10 @@ class UnitQuerySet(models.query.QuerySet):
         use .order_by('msgid').distinct('msgid')
         (or possibly with 'index' - but this field is yet to be defined functionally)
         """
-        q = Q(
-            store__project=module.project,
-            locations__filename__icontains=module.pattern
-        )
+        d = dict(store__project=module.project)
+        if module.pattern: d['locations__filename__icontains'] = module.pattern
+        else: d['locations'] = None
+        q = Q(**d)
         if exclude: q = ~q
         if query: return q
         return self.filter(q)
@@ -350,7 +350,7 @@ class Module(models.Model):
 
     project = models.ForeignKey(Project, related_name='modules')
     name = models.CharField(max_length=255)
-    pattern = models.TextField(null=True)
+    pattern = models.TextField(null=True)   # null pattern means units with no location will be matched
 
     @property
     def units(self):

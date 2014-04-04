@@ -3,7 +3,7 @@ import json
 from django import forms
 from django.utils.translation import ugettext as _
 
-from rest_framework import serializers, fields
+from rest_framework import serializers, fields, six
 
 from models import Project, Store, Unit, Location, Module
 
@@ -18,6 +18,13 @@ class ArrayField(fields.CharField):
     type_label = 'list'
     form_field_class = forms.CharField
     widget = forms.Textarea
+
+    def from_native(self, value):
+        if isinstance(value, six.string_types):
+            return json.loads(value)
+        elif not type(value) in (list, tuple):
+            return [value]
+        return value
 
 class UnitSetCounts(object):
     def get_count(self, model):
@@ -53,6 +60,7 @@ class UnitSerializer(serializers.ModelSerializer):
     class Meta:
         model = Unit
         fields = ('id', 'msgid', 'msgstr', 'comments')
+        read_only_fields = ('comments',)
 
     msgid = ArrayField()
     msgstr = ArrayField()

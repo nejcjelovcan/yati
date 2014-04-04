@@ -17,6 +17,23 @@
             }
         };
 
+    // @TODO move to util.js
+    yati.util = {
+        // this replaces many spaces at beginning/end with only one visible placeholder
+        // @TODO put in as many placeholders as spaces
+        highlightTrim: function (str) {
+            return (str||'').replace(/^\s+/, '&#9251;')
+                .replace(/[ ]+$/, '&#9251;');
+        },
+        // html-ize tabs and newlines
+        htmlize: function (str) {
+            return str.replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;').replace(/\n/g, '<br/>');
+        },
+        prepareString: function (str) {
+            return yati.util.htmlize(yati.util.highlightTrim(str));
+        }
+    };
+
     yati.models.Project = barebone.Model.extend(_({
         urlRoot: urlRoot+'projects/',
         defaults: {
@@ -50,7 +67,7 @@
         model: yati.models.Language
     });
 
-    yati.models.Module = barebone.Model.extend({
+    yati.models.Module = barebone.Model.extend(_({
         urlRoot: urlRoot+'modules/',
         // @TODO fsck this shizzle - check nested Many collections because they're fishy
         defaults: {
@@ -64,7 +81,7 @@
                 collectionType: 'yati.models.Units'
             }
         ]
-    });
+    }).extend(UnitSet));
     
     yati.models.Modules = barebone.Collection.extend({
         urlRoot: urlRoot+'modules/',
@@ -99,8 +116,14 @@
                 data.msgid = _(data.msgid).map(function (s, i) { return {value: s, id: i+1}; });
                 data.msgstr = _(data.msgstr).map(function (s, i) { return {value: s, id: i+1}; });
             }
-            console.log(JSON.stringify(data));
             return data;
+        },
+        toJSON: function () {
+            var json = barebone.Model.prototype.toJSON.call(this);
+            // @TODO order by index
+            json.msgid = _(json.msgid).map(function (msg) { return msg.value; });
+            json.msgstr = _(json.msgstr).map(function (msg) { return msg.value; });
+            return json;
         }
     });
 

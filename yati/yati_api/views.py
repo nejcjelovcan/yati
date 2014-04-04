@@ -1,5 +1,7 @@
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.shortcuts import render_to_response
 from django.conf import settings
+from django.template import RequestContext
 
 from rest_framework import viewsets
 
@@ -28,13 +30,19 @@ class UnitViewSet(viewsets.ModelViewSet):
     queryset = Unit.objects.all()
 
     def get_queryset(self):
-        module_id = self.request.GET.get('module_id')
-        language = self.request.GET.get('language')
-        if not language in get_setting('LANGUAGES'):
-            raise Exception("Must provide valid language parameter")
-        qs = Unit.objects.all().filter(store__targetlanguage=language)
-        if module_id:
-            qs = qs.by_module(Module.objects.get(id=module_id))
+        qs = Unit.objects.all().exclude_header()
+        if self.request.method == 'GET':
+            module_id = self.request.GET.get('module_id')
+            language = self.request.GET.get('language')
+            filter = self.request.GET.get('filter')
+            if not language in get_setting('LANGUAGES'):
+                raise Exception("Must provide valid language parameter")
+            qs = qs.filter(store__targetlanguage=language)
+            if filter == 'untranslated':
+                qs = qs.undone()
+            if module_id:
+                qs = qs.by_module(Module.objects.get(id=module_id)).order_by('id').distinct('id')
+            return qs
         return qs
 
 # Mock model and queryset for language
@@ -56,5 +64,6 @@ class LanguageViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = LanguageQueryset([Language(id=item, display=LANGUAGES[item]) for item in get_setting('LANGUAGES')])
     paginate_by = 500
 
+@ensure_csrf_cookie
 def main(request):
-    return render_to_response('main.html')
+    return render_to_response('main.html', {}, context_instance=RequestContext(request))

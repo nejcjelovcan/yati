@@ -1,10 +1,11 @@
 (function (yati, Backbone, barebone) {
+
     yati.router = new (Backbone.Router.extend({
         initialize: function () {
             this.route('', 'index');
             this.route(':language', 'index');
             this.route(':language/:project_id', 'project');
-            this.route(':language/:project_id/:module_id', 'module');
+            this.route(':language/:project_id/:module_id(/)(:page)(/)(:filter)', 'module');
         },
         index: function (language) {
             yati.app.set({language: language||'sl', view: 'index'});
@@ -16,12 +17,20 @@
                 yati.app.set({language: language||'sl', view: 'project', project: yati.app.get('projects').get(project_id)});
             }
         },
-        module: function (language, project_id, module_id) {
+        module: function (language, project_id, module_id, page, filter) {
+            var unitParams = {page: parseInt(page,10)||1, filter: filter||'all', pageSize: 10};
             if (!yati.app.get('projects').length) {
-                yati.app.get('projects').once('sync', function () { this.module(language, project_id, module_id); }, this);
+                var args = _(arguments).toArray();
+                yati.app.get('projects').once('sync', function () { yati.router.module.apply(this, args); }, this);
             } else {
                 var prj = yati.app.get('projects').get(project_id);
-                yati.app.set({language: language||'sl', view: 'module', project: prj, module: prj.get('modules').get(module_id)});
+                yati.app.set({
+                    language: language||'sl',
+                    view: 'module',
+                    project: prj,
+                    module: prj.get('modules').get(module_id),
+                    unitParams: unitParams
+                });
             }
         }
     }));
@@ -35,7 +44,8 @@
             projects: [],
             project: {},    // currently selected project
             module: {},     // currently selected module
-            view: 'index'
+            view: 'index',
+            unitParams: { filter: 'all' }
         },
         relations: [
             {
@@ -66,6 +76,7 @@
             this.on('change:language', this.on_language_changed);
             this.on('sync:languages', this.on_language_changed);
             this.on('change:module', this.on_module_changed);
+            this.on('change:unitParams', this.on_module_changed);
         },
         on_language_changed: function () {
             var lang = this.get('languages').get(this.get('language'));
@@ -74,7 +85,13 @@
             this.get('module').get('units').setQueryParams({ language: this.get('language') }, {silent: true}).reset();
         },
         on_module_changed: function () {
-            this.get('module').get('units').setQueryParams({ module_id: this.get('module').get('id'), language: this.get('language') }, {silent: !this.get('module').get('id')});
+            this.get('module').get('units').setQueryParams(_({
+                    module_id: this.get('module').get('id'),
+                    language: this.get('language')
+                }).extend(this.get('unitParams')),
+                {
+                    silent: !this.get('module').get('id')
+                });
         }
     });
 

@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="{% static "yati/css/yati.css" %}" type="text/css" media="screen" />
 
     <script src="https://cdn.jsdelivr.net/jquery/1.8.3/jquery-1.8.3.min.js"></script>
+    <script src="{% static "yati/js/jquery.autosize.min.js" %}"></script>
     
     <script src="https://cdn.jsdelivr.net/modernizr/2.7.1/modernizr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/foundation/5.2.1/js/foundation/foundation.js"></script>
@@ -20,6 +21,7 @@
     <script src="{% static "yati/js/barebone-backbone.min.js" %}"></script>
     <script src="https://cdn.jsdelivr.net/knockout/3.1.0/knockout.js"></script>
     <script src="{% static "yati/js/knockback-core.min.js" %}"></script>
+    <script src="{% static "yati/js/knockback-triggering.min.js" %}"></script>
 
     <script src="{% static "yati/js/core.js" %}"></script>
     <script src="{% static "yati/js/models.js" %}"></script>
@@ -32,6 +34,8 @@
     <script type="text/x-jquery-tmpl" id="index-view">{% include "tpl/index-view.tpl" %}</script>
     <script type="text/x-jquery-tmpl" id="project-view">{% include "tpl/project-view.tpl" %}</script>    
     <script type="text/x-jquery-tmpl" id="module-view">{% include "tpl/module-view.tpl" %}</script>    
+    <script type="text/x-jquery-tmpl" id="pagination-view">{% include "tpl/pagination-view.tpl" %}</script>    
+    <script type="text/x-jquery-tmpl" id="unit-view">{% include "tpl/unit-view.tpl" %}</script>    
   </body>
 
 </html>

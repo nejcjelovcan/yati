@@ -10,3 +10,7 @@
      1px 1px 0 #000;
     
 }
+
+textarea {
+    margin-bottom: 0px;
+}

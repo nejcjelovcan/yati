@@ -91,6 +91,8 @@ STATIC_ROOT = 'static'
 
 REST_FRAMEWORK = {
     'PAGINATE_BY': 50,
+    'PAGINATE_BY_PARAM': 'page_size',
+    'MAX_PAGINATE_BY': 100
     #'FILTER_BACKEND': 'rest_framework.filters.DjangoFilterBackend',
     #'DEFAULT_AUTHENTICATION_CLASSES': (
     #   'rest_framework.authentication.SessionAuthentication',
