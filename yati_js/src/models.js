@@ -21,8 +21,9 @@
     yati.util = {
         // this replaces many spaces at beginning/end with only one visible placeholder
         // @TODO put in as many placeholders as spaces
+        // @TODO render trailing newline as &#9166;
         highlightTrim: function (str) {
-            return (str||'').replace(/^\s+/, '&#9251;')
+            return (str||'').replace(/^[ ]+/, '&#9251;')
                 .replace(/[ ]+$/, '&#9251;');
         },
         // html-ize tabs and newlines

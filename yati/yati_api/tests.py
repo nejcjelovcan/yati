@@ -43,6 +43,10 @@ class ModelTest(TestCase):
         self.assertEqual(self.project.get_orphan_units().count(), Unit.objects.all().count() - mod.units.count())
         self.assertEqual(self.project.get_orphan_locations().count(), 2)
 
+        self.assertEqual(Unit.objects.by_module(mod).distinct('msgid').count() +
+            Unit.objects.by_module(self.project.modules.get(name='Uncategorized')).distinct('msgid').count(),
+            Unit.objects.all().count())
+
 
     # def testTerminology(self):
     #     self.pofile.read()

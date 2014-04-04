@@ -84,23 +84,33 @@ class Project(models.Model):
         return u'"%s"'%self.name
 
     def get_orphan_units(self):
-        return self._get_orphan(Unit).order_by('store', 'msgid').distinct('store', 'msgid')
+        return self.get_orphan(Unit).order_by('store', 'msgid').distinct('store', 'msgid')
         
     def get_orphan_locations(self):
-        return self._get_orphan(Location).order_by('filename').distinct('filename').values_list('filename', flat=True)
+        return self.get_orphan(Location).order_by('filename').distinct('filename').values_list('filename', flat=True)
 
-    def _get_orphan(self, model_cls):
+    def get_orphan(self, model_cls, query=False):
         q = None
         qs = model_cls.objects.all()
-        for module in self.modules.all():
+        for module in self.modules.exclude(pattern=None):
             q1 = qs.by_module(module, query=True)
             q = q | q1 if q else q1
+        if query: return ~q
         if q: return qs.exclude(q)
         return qs
 
     @property
     def units(self):
         return Unit.objects.by_project(self).order_by('id').distinct('id')
+
+    def save(self, *args, **kwargs):
+        result = super(Project, self).save(*args, **kwargs)
+
+        # create uncategorized module
+        if not self.modules.filter(pattern=None).exists():
+            self.modules.create(name='Uncategorized', pattern=None)
+
+        return result
 
 class Store(models.Model):
     """
@@ -218,10 +228,9 @@ class UnitQuerySet(models.query.QuerySet):
         use .order_by('msgid').distinct('msgid')
         (or possibly with 'index' - but this field is yet to be defined functionally)
         """
-        d = dict(store__project=module.project)
-        if module.pattern: d['locations__filename__icontains'] = module.pattern
-        else: d['locations'] = None
-        q = Q(**d)
+        q = None
+        if module.pattern: q = Q(store__project=module.project, locations__filename__icontains=module.pattern)
+        else: q = module.project.get_orphan(Unit, query=True)   # @TODO get_orphan already has store__project in every OR
         if exclude: q = ~q
         if query: return q
         return self.filter(q)
