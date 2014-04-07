@@ -15,11 +15,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ProjectSerializer
     queryset = Project.objects.all()
 
-    def get_queryset(self):
-        language = self.request.GET.get('language')
-        qs = Project.objects.all()
-        if language: qs = qs.filter(stores__targetlanguage=language).distinct('id')
-        return qs
+    #def get_queryset(self):
+    #    language = self.request.GET.get('language')
+    #    qs = Project.objects.all()
+    #    if language: qs = qs.filter(stores__targetlanguage=language).distinct('id')
+    #    return qs
 
 class StoreViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.StoreSerializer
@@ -40,6 +40,8 @@ class UnitViewSet(viewsets.ModelViewSet):
             qs = qs.filter(store__targetlanguage=language)
             if filter == 'untranslated':
                 qs = qs.undone()
+            elif filter == 'translated':
+                qs = qs.done()
             if module_id:
                 qs = qs.by_module(Module.objects.get(id=module_id)).order_by('id').distinct('id')
             return qs

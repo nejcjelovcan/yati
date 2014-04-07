@@ -41,10 +41,14 @@ class ModuleSerializer(serializers.ModelSerializer, UnitSetCounts):
 class ProjectSerializer(serializers.ModelSerializer, UnitSetCounts):
     class Meta:
         model = Project
-        fields = ('id', 'name', 'modules', 'units_count')
+        fields = ('id', 'name', 'modules', 'units_count', 'targetlanguages')
 
     modules = ModuleSerializer(many=True)
     units_count = serializers.SerializerMethodField('get_count')
+    targetlanguages = serializers.SerializerMethodField('get_targetlanguages')
+
+    def get_targetlanguages(self, project):
+        return project.targetlanguages
 
 class StoreSerializer(serializers.ModelSerializer):
     class Meta:

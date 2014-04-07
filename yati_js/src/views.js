@@ -33,7 +33,6 @@
             });
 
             yati.appView = this;
-            yati.app.get('languages').fetch();
 
             Backbone.history.start();
             $(document).foundation();
@@ -56,6 +55,18 @@
                     modules: collectionFactory(yati.views.ModuleView)
                 }
             });
+
+            this.targetlanguages = ko.computed(function () {
+                // @TODO subset languages colletion??
+                // @TODO this observable needs dependencies (when langauges will be added)
+                // @TODO unsafe if language not found in languages collection
+                return _(this.model().get('targetlanguages')).map(function (l) {
+                    var lang = yati.app.get('languages').get(l);
+                    return {id: l, display: lang ? lang.get('display') : l};
+                });
+
+            }, this);
+
             initUnitSet.call(this, model);
         }
     });
@@ -163,8 +174,7 @@
             yati.views.QueryParamsView.prototype.constructor.call(this, model, {keys: ['filter']});
         },
         pageLink: function (page) {
-            return '#' + yati.app.get('language') + '/' + yati.app.get('project').get('id') + '/' +
-                yati.app.get('module').get('id') + '/' + page + '/' + (this.filter() || 'all');
+            return yati.router.link('module', null, null, null, this.filter() || 'all', page);
         }
     });
 

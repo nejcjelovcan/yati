@@ -95,13 +95,17 @@ class Project(models.Model):
         for module in self.modules.exclude(pattern=None):
             q1 = qs.by_module(module, query=True)
             q = q | q1 if q else q1
-        if query: return ~q
+        if query: return ~q if q else Q()
         if q: return qs.exclude(q)
         return qs
 
     @property
     def units(self):
         return Unit.objects.by_project(self).order_by('id').distinct('id')
+
+    @property
+    def targetlanguages(self):
+        return self.stores.values_list('targetlanguage', flat=True).distinct()
 
     def save(self, *args, **kwargs):
         result = super(Project, self).save(*args, **kwargs)
