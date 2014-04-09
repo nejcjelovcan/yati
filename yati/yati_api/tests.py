@@ -48,24 +48,23 @@ class ModelTest(TestCase):
             Unit.objects.all().count())
 
 
-    # def testTerminology(self):
-    #     self.pofile.read()
-    #     self.pofile.read_terminology()
+    def testTerminology(self):
+        self.store.update()
+        units = self.project.units.all().count()
 
-    #     self.assertItemsEqual(Term.objects.all().values_list('sid', flat=True), [u'slide'])
-    #     msg = self.pofile.messages.create(sid=u'Go to next slide')
-    #     self.assertItemsEqual(map(lambda t: t.sid, msg.terminology()), [u'slide'])
+        term = self.project.get_terminology_store('sl')
+        term.save()
+        term.update()
 
-    # def testModules(self):
-    #     self.pofile.read()
-    #     self.assertEqual(len(Module.get_orphan_messages()), Message.objects.all().count())
+        self.assertEqual(term.units.all().count(), 1)
+        unit = term.units.all()[0]
+        self.assertEqual(unit.msgid[0], 'slide')
+        self.assertEqual(unit.msgstr[0], 'prosojnica')
 
-    #     locations = Module.get_orphan_messages(locations=True)
-    #     self.assertEqual(len(locations), 3)
-    #     self.assertTrue(all(map(lambda l: 'smileplayer' in l, locations)))
+        units = self.project.get_terminology('test slide', 'sl')
+        self.assertEqual(unit.msgid[0], 'slide')
+        self.assertEqual(unit.msgstr[0], 'prosojnica')
 
-    #     Module.objects.create(name='player', pattern='smileplayer')
-    #     self.assertEqual(len(Module.get_orphan_messages()), 0)
 
     def tearDown(self):
         Project.objects.all().delete()

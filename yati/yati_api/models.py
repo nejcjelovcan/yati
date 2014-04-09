@@ -101,7 +101,7 @@ class Project(models.Model):
 
     @property
     def units(self):
-        return Unit.objects.by_project(self).order_by('id').distinct('id')
+        return Unit.objects.exclude_terminology().by_project(self).order_by('id').distinct('id')
 
     @property
     def targetlanguages(self):
@@ -116,6 +116,15 @@ class Project(models.Model):
 
         return result
 
+    def get_terminology_store(self, targetlanguage):
+        "Returns terminology store"
+        try: return self.stores.get(targetlanguage=targetlanguage, type='term')
+        except Store.DoesNotExist: return Store(project=self, targetlanguage=targetlanguage, type='term')
+
+    def get_terminology(self, query, targetlanguage):
+        # @TODO some kind of auto updating mechanism?
+        return self.get_terminology_store(targetlanguage).units.all().by_msgid_levens(query)
+
 class Store(models.Model):
     """
     Store
@@ -129,6 +138,8 @@ class Store(models.Model):
         ('po', 'PO file'),
         ('term', 'Terminology')
     )
+
+    RE_CLEARTERM = re.compile(r'{[^}]*}')   # used to clear termninology strings
 
     type = models.CharField(choices=TYPE_CHOICES, default='po', max_length=100)
     project = models.ForeignKey(Project, related_name='stores')
@@ -152,34 +163,61 @@ class Store(models.Model):
         return {}
 
     def __unicode__(self):
-        return u'%s, (%s -> %s), project: %s'%(self.source, self.sourcelanguage, self.targetlanguage, self.project.name)
+        return u'%s, (%s -> %s), project: %s'%(self.source if self.type == 'po' else 'TERMINOLOGY', self.sourcelanguage, self.targetlanguage, self.project.name)
 
-    def read(self):
-        "Read whatever the source and return pofile"
-        return getattr(self, 'read_%s'%self.type)()
-
-    def read_po(self):
+    def read(self, path=None):
         """
         Read pofile from the disk
 
         Returns translate.storage.pypo.pofile instance
         """
+        assert self.type == 'po'
         pofile = pypo.pofile()
-        handle = open(self.source, 'r')
+        handle = open(path or self.source, 'r')
         pofile.parse(handle)
         handle.close()
         return pofile
-    
-    def read_term(self, stores=[]):
+        
+    def update(self):    
+        return getattr(self, 'update_%s'%self.type)()
+
+    def update_term(self, stores=None):
         """
         Export terminology from specified stores
+        and update units in this store
         if no source specified, all the stores with same project
         and targetlanguage will be used
-
-        Returns pypo.pofile instance with combined terminology
         """
+        assert self.type == 'term'
+        if not stores:
+            stores = list(self.project.stores.filter(targetlanguage=self.targetlanguage, type='po'))
 
-    def update(self, pofile=False):
+        if len(stores) > 0:
+            tex = poterminology.TerminologyExtractor()
+
+            for store in stores:
+                pof = store.read()
+                tex.processunits(pof.units, store.source)
+
+            terminology = tex.extract_terms()
+            i = 0
+            for item in sorted(terminology.values(), key=lambda t: t[0], reverse=True):
+                source = Unit.pounit_get(item[1], 'source')
+                strings = filter(lambda s: bool(s), map(unicode.strip, self.RE_CLEARTERM.sub('', unicode(item[1].gettarget())).split(';')))
+
+                if source and len(strings) > 0:
+                    unit = None
+                    try: unit = self.units.get(msgid=source)
+                    except Unit.DoesNotExist: unit = Unit(store=self)
+                    unit.index = i
+                    unit.msgid = source
+                    unit.msgstr = strings
+                    # item[1].getlocations() @TODO whenever we need this...
+                    unit.save()
+
+                i += 1
+
+    def update_po(self, pofile=False):
         """
         Update units in database with given pofile
         If no pofile passed, it will be taken from self.read()
@@ -191,13 +229,13 @@ class Store(models.Model):
         """
         if not pofile: pofile = self.read()
         for i in xrange(len(pofile.units)):
-            pounit, unit = pofile.units[i], None
+            pounit = pofile.units[i]
+            unit = None
             try:
-                unit = self.units.get(
-                    msgid=Unit.pounit_get(pounit, 'source'))
+                unit = self.units.get(msgid=Unit.pounit_get(pounit, 'source'))
             except Unit.DoesNotExist:
                 unit = Unit(store=self)
-            unit.index = i
+            unit.index = i  # @TODO ?
             unit.from_pounit(pounit)
 
     def write(self, handle=None):
@@ -225,12 +263,20 @@ class Store(models.Model):
             pofile.addunit(unit.to_pounit())
         return pofile
 
+    def save(self, *args, **kwargs):
+        if self.type == 'po' and not self.targetlanguage:
+            try:
+                pof = self.read()
+                self.targetlanguage = pof.gettargetlanguage()
+            except:
+                self.targetlanguage = None
+        super(Store, self).save(*args, **kwargs)
+
 class UnitQuerySet(models.query.QuerySet):
     def by_module(self, module, exclude=False, query=False):
         """
         Warning: this can return duplicate units
-        use .order_by('msgid').distinct('msgid')
-        (or possibly with 'index' - but this field is yet to be defined functionally)
+        use e.g. .order_by('msgid').distinct('msgid')
         """
         q = None
         if module.pattern: q = Q(store__project=module.project, locations__filename__icontains=module.pattern)
@@ -247,11 +293,14 @@ class UnitQuerySet(models.query.QuerySet):
         q, q1 = None, None
         if target: q = Q(store__targetlanguage=target)
         if source: q1 = Q(store__sourcelanguage=source)
-        q = q & q1 if q else q1
+        q = q & q1 if q and q1 else (q1 or q)
         return self.filter(q)
 
     def exclude_header(self):
         return self.exclude(index=0, msgid=[''])
+
+    def exclude_terminology(self):
+        return self.exclude(store__type='term')
 
     def q_done(self):
         return Q(msgid=[''])|~(Q(msgstr=[''])|Q(msgstr=['','']))
@@ -263,6 +312,32 @@ class UnitQuerySet(models.query.QuerySet):
     def undone(self):
         return self.exclude(self.q_done())
 
+    def by_msgid_levens(self, query):
+        query = unicode(query)
+        lswhere = []
+        terms = filter(lambda s: not not s, map(lambda s: s.strip(' \n\t.,:.\'"'), query.split(' ')))
+        for i in range(len(terms) - 1):
+            if len(terms[i]) < 2 or len(terms[i+1]) < 2: continue
+            lswhere.append(u'%s %s'%(terms[i], terms[i+1]))
+
+        lswhere += filter(lambda s: len(s) > 3, terms)
+        lswhere = map(unicode.lower, lswhere)
+
+        if len(lswhere):
+            # interesting fact: postgresql array are 1-indexed (not 0-indexed)
+            qs = self.filter(store__type='term')\
+                .extra(where=[' OR '.join(['levenshtein(lower(yati_api_unit.msgid[1]), %s) < char_length(yati_api_unit.msgid[1])/3']*len(lswhere))], params=lswhere)
+            return sorted(qs, key=lambda u: UnitQuerySet.ls_score(u, lswhere))
+
+        return []
+
+    @staticmethod
+    def ls_score(unit, lswhere):
+        min = 99
+        for s in lswhere:
+            l = ((float(Levenshtein.distance(unit.msgid[0].lower(), s))/len(unit.msgid[0])) or 0.01)
+            if l < min: min = l
+        return min/(float(len(unit.msgid[0]))/100)
 
 class Unit(models.Model):
     index = models.IntegerField(null=True)
@@ -367,7 +442,7 @@ class Module(models.Model):
 
     @property
     def units(self):
-        return Unit.objects.all().by_module(self).order_by('index').distinct('index')
+        return Unit.objects.all().exclude_terminology().by_module(self).order_by('index').distinct('index')
 
     def __unicode__(self):
         return u'%s: %s (%s)'%(self.project.name, self.name, self.pattern)

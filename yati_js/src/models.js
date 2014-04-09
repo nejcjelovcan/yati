@@ -105,38 +105,30 @@
     yati.models.Unit = barebone.Model.extend({
         urlRoot: urlRoot+'units/',
         defaults: {
-            msgid: [],
-            msgstr: []
-        },
+        },/*,
         relations: [
             {
                 type: Backbone.Many,
-                key: 'msgid',
+                key: 'msgid_plural',
                 relatedModel: 'yati.models.String',
                 collectionType: 'yati.models.Strings'
             },
             {
                 type: Backbone.Many,
-                key: 'msgstr',
+                key: 'msgstr_plural',
                 relatedModel: 'yati.models.String',
                 collectionType: 'yati.models.Strings'
             }
-        ],
+        ],*/
         isPlural: function () {
-            return !!(this.get('msgid')||[]).length;
-        },
-        parse: function (data) {
-            if (data && (data.msgid||data.msgstr)) {
-                data.msgid = _(data.msgid).map(function (s, i) { return {value: s, id: i+1}; });
-                data.msgstr = _(data.msgstr).map(function (s, i) { return {value: s, id: i+1}; });
-            }
-            return data;
+            return !!(this.get('msgid_plural')||[]).length;
         },
         toJSON: function () {
             var json = barebone.Model.prototype.toJSON.call(this);
             // @TODO order by index
-            json.msgid = _(json.msgid).map(function (msg) { return msg.value; });
-            json.msgstr = _(json.msgstr).map(function (msg) { return msg.value; });
+            //json.msgid = [json.msgid].concat(json.msgid_plural || [])
+            json.msgstr = [json.msgstr].concat(json.msgstr_plural || []);
+            delete json.msgid; delete json.msgid_plural; delete json.msgstr_plural;
             return json;
         }
     });

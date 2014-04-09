@@ -15,12 +15,17 @@
         initialize: function () {
             this.route('', 'index');
             this.route(':project_id/', 'project');
+            //this.route(':project_id/add/', 'sourceAdd');
             this.route(':project_id/:language/', 'language');
             this.route(':project_id/:language/:module_id(/)(:filter)(/)(:page)(/)', 'module');
         },
-        index: function () {
+        index: afterInit(function () {
+            if (yati.app.get('projects').length == 1) {
+                this.navigate(this.link('project', yati.app.get('projects').first().get('id')), {trigger: true});
+                return;
+            }
             yati.app.set({view: 'index'});
-        },
+        }),
         _getProject: function (project_id) {
             var prj = yati.app.get('projects').get(project_id);
             if (prj) return prj;
@@ -32,7 +37,7 @@
             console.log('PRJ', project_id, language, prj, lang);
             if (prj) {
                 if (!lang) {
-                    this.navigate(project_id+'/', {trigger: true});
+                    this.navigate(this.link('project', project_id), {trigger: true});
                 } else {
                     return [prj, lang];
                 }
@@ -44,6 +49,12 @@
                 yati.app.set({view: 'project', project: prj});
             }
         }),
+        /*sourceAdd: afterInit(function (project_id) {
+            var prj = this._getProject(project_id);
+            if (prj) {
+                yati.app.set({view: 'sourceAdd', project: prj});
+            }
+        }),*/
         language: afterInit(function (project_id, language) {
             var prjlang = this._getProjectLanguage(project_id, language);
             if (prjlang) {
@@ -137,16 +148,17 @@
             this.get('projects').fetch();
             this.on('change:module', this.on_module_changed);
             this.on('change:unitParams', this.on_module_changed);
+            this.on('change:language', this.on_language_changed);
         },
         on_module_changed: function () {
-            console.log('ON MODULE CHANGED', _({
-                module_id: this.get('module').get('id'),
-                language: this.get('language').get('id')
-            }).extend(this.get('unitParams')));
             this.get('module').get('units').setQueryParams(_({
                 module_id: this.get('module').get('id'),
                 language: this.get('language').get('id')
             }).extend(this.get('unitParams')));
+        },
+        on_language_changed: function () {
+            console.log('LANGUAGE CHANGED', this.get('language'));
+            this.get('projects').setQueryParams({language: this.get('language').get('id')});
         }
     });
 

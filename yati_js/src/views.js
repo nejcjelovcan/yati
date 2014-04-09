@@ -12,9 +12,9 @@
     };
 
     var initUnitSet = function (model) {
-        this.progress = ko.computed(function () { return model.getProgress(); });
-        this.count = ko.computed(function () { return model.getCount(); });
-        this.countDone = ko.computed(function () { return model.getCountDone(); });
+        this.progress = ko.computed(function () { this.units_count(); return model.getProgress(); }, this);
+        this.count = ko.computed(function () { this.units_count(); return model.getCount(); }, this);
+        this.countDone = ko.computed(function () { this.units_count(); return model.getCountDone(); }, this);
     };
     var collectionFactory = function (view_model) { return function (col) { return kb.collectionObservable(col, {view_model: view_model})} };
 
@@ -50,7 +50,7 @@
     yati.views.ProjectView = kb.ViewModel.extend({
         constructor: function (model) {
             kb.ViewModel.prototype.constructor.call(this, model, {
-                keys: ['id', 'name', 'modules'],
+                keys: ['id', 'name', 'modules', 'units_count'],
                 factories: {
                     modules: collectionFactory(yati.views.ModuleView)
                 }
@@ -74,7 +74,7 @@
     yati.views.ModuleView = kb.ViewModel.extend({
         constructor: function (model) {
             kb.ViewModel.prototype.constructor.call(this, model, {
-                keys: ['id', 'name', 'units'],
+                keys: ['id', 'name', 'units', 'units_count'],
                 factories: {
                     units: collectionFactory(yati.views.UnitView)
                 }
@@ -84,11 +84,10 @@
                 return '#' + yati.app.get('language') + '/' + yati.app.get('project').get('id') + '/' + this.id() + '/';
             }, this);
 
-            // @TODO this is the only thing that even remotely works
+            // @TODO this is the only thing that even remotely works <-- ???
             // better pattern for related models that are not in attributes?
             // (or that are in attributes but not as relations)
             this.unitsParams = ko.computed(function () {
-                this.units(); this.model();
                 return new yati.views.UnitsQueryParamsView(this.model().get('units').queryParams);
             }, this);
 
@@ -101,7 +100,7 @@
             kb.ViewModel.prototype.constructor.call(this, model, {
                 keys: ['id', 'msgid', 'msgstr'],
                 factories: {
-                    //msgid: collectionFactory(yati.views.StringView), too heavy
+                    //msgid: collectionFactory(yati.views.StringView), too heavy + deprecated (do this for msgid_plural and msgstr_plural)
                     //msgstr: collectionFactory(yati.views.StringView)
                 }
             });
@@ -119,25 +118,6 @@
             this.onclick = _(function () {
                 this.edit(true);
             }).bind(this);
-
-            this.triggeredMsgid = kb.triggeredObservable(model.get('msgid'), 'change');
-            this.triggeredMsgstr = kb.triggeredObservable(model.get('msgstr'), 'change');
-
-            this.msgid0 = ko.computed(function () {
-                return this.msgid()[0].value();
-            }, this);
-
-            this.msgstr0 = ko.computed({
-                read: function () {
-                    this.triggeredMsgstr();
-                    return this.msgstr()[0].value();
-                },
-                write: function (val) {
-                    this.msgstr()[0].model().set('value', val);
-                    this.model().save();
-                },
-                owner: this
-            });
         }
     });
 
@@ -177,14 +157,5 @@
             return yati.router.link('module', null, null, null, this.filter() || 'all', page);
         }
     });
-
-    /*yati.views.StringView = kb.ViewModel.extend({
-        constructor: function (model) {
-            kb.ViewModel.prototype.constructor.call(this, model, {
-                keys: ['index', 'value']
-            });
-        }
-    });*/
-
 
 }(yati, Backbone, barebone, _, ko, kb));

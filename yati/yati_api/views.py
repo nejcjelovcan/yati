@@ -3,7 +3,7 @@ from django.shortcuts import render_to_response
 from django.conf import settings
 from django.template import RequestContext
 
-from rest_framework import viewsets
+from rest_framework import viewsets, response
 
 import serializers
 from models import Project, Store, Unit, Module, Location
@@ -26,16 +26,15 @@ class StoreViewSet(viewsets.ModelViewSet):
     queryset = Store.objects.all()
 
 class UnitViewSet(viewsets.ModelViewSet):
-    serializer_class = serializers.UnitSerializer
     queryset = Unit.objects.all()
 
     def get_queryset(self):
-        qs = Unit.objects.all().exclude_header()
+        qs = Unit.objects.all().exclude_header().exclude_terminology()
         if self.request.method == 'GET':
             module_id = self.request.GET.get('module_id')
             language = self.request.GET.get('language')
             filter = self.request.GET.get('filter')
-            if not language in get_setting('LANGUAGES'):
+            if not language in LANGUAGES:
                 raise Exception("Must provide valid language parameter")
             qs = qs.filter(store__targetlanguage=language)
             if filter == 'untranslated':
@@ -46,6 +45,24 @@ class UnitViewSet(viewsets.ModelViewSet):
                 qs = qs.by_module(Module.objects.get(id=module_id)).order_by('id').distinct('id')
             return qs
         return qs
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return serializers.UnitSerializer
+        return serializers.UnitWritableSerializer
+
+class TermViewSet(viewsets.ViewSet):
+    def list(self, request):
+        project_id = request.GET.get('project_id')
+        lang = request.GET.get('language')      # target language
+        q = request.GET.get('q')                # levenshtein query
+
+        if not lang in LANGUAGES:
+            raise Exception("Must provide valid language parameter")
+
+        prj = Project.objects.get(id=project_id) # @TODO does not exist
+        serializer = serializers.UnitTermSerializer(prj.get_terminology(q, lang), many=True)
+        return response.Response(serializer.data)
 
 # Mock model and queryset for language
 # this is fugly @TODO
@@ -63,7 +80,7 @@ class LanguageQueryset(list):
 
 class LanguageViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.LanguageSerializer
-    queryset = LanguageQueryset([Language(id=item, display=LANGUAGES[item]) for item in get_setting('LANGUAGES')])
+    queryset = LanguageQueryset(sorted([Language(id=item, display=LANGUAGES[item]) for item in LANGUAGES], key=lambda l: l.get('id')))
     paginate_by = 500
 
 @ensure_csrf_cookie

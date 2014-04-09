@@ -9,4 +9,5 @@ router.register(r'projects', views.ProjectViewSet)
 router.register(r'stores', views.StoreViewSet)
 router.register(r'units', views.UnitViewSet)
 router.register(r'languages', views.LanguageViewSet, _('Language'))
+router.register(r'terms', views.TermViewSet, _('Term'))
 urlpatterns = router.urls

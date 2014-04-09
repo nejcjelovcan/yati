@@ -28,7 +28,11 @@ class ArrayField(fields.CharField):
 
 class UnitSetCounts(object):
     def get_count(self, model):
-        return [model.units.count(), model.units.done().count()]
+        lang = self.context.get('request').GET.get('language')
+        units = model.units
+        if lang:
+            units = units.by_language(target=lang)
+        return [units.count(), units.done().count()]
 
 class ModuleSerializer(serializers.ModelSerializer, UnitSetCounts):
     class Meta:
@@ -63,11 +67,40 @@ class LocationSerializer(serializers.ModelSerializer):
 class UnitSerializer(serializers.ModelSerializer):
     class Meta:
         model = Unit
-        fields = ('id', 'msgid', 'msgstr', 'comments')
-        read_only_fields = ('comments',)
+        fields = ('id', 'msgid', 'msgstr', 'msgid_plural', 'msgstr_plural', 'comments')
 
-    msgid = ArrayField()
+    msgid = serializers.SerializerMethodField('get_msgid')
+    msgstr = serializers.SerializerMethodField('get_msgstr')
+
+    msgid_plural = serializers.SerializerMethodField('get_msgid_plural')
+    msgstr_plural = serializers.SerializerMethodField('get_msgstr_plural')
+
+    def get_msgid(self, unit):
+        return unit.msgid[0]
+
+    def get_msgstr(self, unit):
+        return unit.msgstr[0]
+
+    def get_msgid_plural(self, unit):
+        if len(unit.msgid) > 1: return unit.msgid[1:]
+
+    def get_msgstr_plural(self, unit):
+        if len(unit.msgstr) > 1: return unit.msgstr[1:]
+
+class UnitWritableSerializer(UnitSerializer):
+    class Meta:
+        model = Unit
+        fields = ('id', 'msgstr')
+
     msgstr = ArrayField()
+
+class UnitTermSerializer(UnitSerializer):
+    class Meta:
+        model = Unit
+        fields = ('id', 'msgid', 'msgstr')
+
+    def get_msgstr(self, unit):
+        return unit.msgstr
 
 class LanguageSerializer(serializers.Serializer):
     "settings.LANGUAGES serializer"
