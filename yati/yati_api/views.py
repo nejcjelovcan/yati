@@ -52,10 +52,24 @@ class UnitViewSet(viewsets.ModelViewSet):
         return serializers.UnitWritableSerializer
 
 class TermViewSet(viewsets.ViewSet):
+    """
+    Terminology viewset
+    project_id and language (target language) are required
+    if unit_id is present, Unit's msgid[0] will be used as query
+    (otherwise, q parameter is expected)
+    lookups are done for words with length min 3 characters
+    """
+
     def list(self, request):
         project_id = request.GET.get('project_id')
         lang = request.GET.get('language')      # target language
         q = request.GET.get('q')                # levenshtein query
+        # if unit_id is present, Unit's msgid[0] will be used as query
+        unit_id = request.GET.get('unit_id')
+
+        if unit_id:
+            unit = Unit.objects.get(id=unit_id)
+            q = unit.msgid[0]
 
         if not lang in LANGUAGES:
             raise Exception("Must provide valid language parameter")

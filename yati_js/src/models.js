@@ -138,6 +138,22 @@
         model: yati.models.Unit
     });
 
+    yati.models.Term = barebone.Model.extend({
+        defaults: {
+            msgid: '',
+            msgstr: ''
+        },
+        parse: function (data) {
+            data.msgstr = data.msgstr.join(', ');
+            return data;
+        }
+    });
+
+    yati.models.Terms = barebone.Collection.extend({
+        urlRoot: urlRoot+'terms/',
+        model: yati.models.Term
+    });
+
     yati.models.String = barebone.Model.extend({
         defaults: {
             value: ''

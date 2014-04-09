@@ -112,7 +112,8 @@
             project: {},    // currently selected project
             module: {},     // currently selected module
             view: 'index',
-            unitParams: { filter: 'all' }
+            unitParams: { filter: 'all' },
+            terms: []
         },
         relations: [
             {
@@ -141,6 +142,12 @@
                 type: Backbone.One,
                 key: 'module',
                 relatedModel: 'yati.models.Module'
+            },
+            {
+                type: Backbone.Many,
+                key: 'terms',
+                relatedModel: 'yati.models.Term',
+                collectionType: 'yati.models.Terms'
             }
         ],
         initialize: function (attrs, options) {
@@ -159,6 +166,13 @@
         on_language_changed: function () {
             console.log('LANGUAGE CHANGED', this.get('language'));
             this.get('projects').setQueryParams({language: this.get('language').get('id')});
+        },
+        set_term_unit: function (unit) {
+            this.get('terms').setQueryParams({language: this.get('language').get('id'), project_id: this.get('project').get('id'), unit_id: null}, {silent: true})
+                .reset([]);
+            if (unit) {
+                this.get('terms').setQueryParams({unit_id: unit.get('id')});
+            }
         }
     });
 

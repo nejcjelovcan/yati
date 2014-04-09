@@ -24,11 +24,12 @@
         constructor: function (model) {
             model = yati.app;
             kb.ViewModel.prototype.constructor.call(this, model, {
-                keys: ['title', 'language', 'languageDisplay', 'languages', 'view', 'project', 'module'],
+                keys: ['title', 'language', 'languageDisplay', 'languages', 'view', 'project', 'module', 'terms'],
                 factories: {
                     project: yati.views.ProjectView,
                     projects: collectionFactory(yati.views.ProjectView),
-                    module: yati.views.ModuleView
+                    module: yati.views.ModuleView,
+                    terms: collectionFactory(yati.views.TermView)
                 }
             });
 
@@ -113,6 +114,7 @@
                 _(function () {
                     $('textarea[data-id=unit-'+this.id()+']')[val ? 'autosize' : 'trigger'](val ? undefined : 'autosize.destroy');
                 }).chain().bind(this).defer();
+                yati.app.set_term_unit(val ? model : null);
             }, this);
 
             this.onclick = _(function () {
@@ -157,5 +159,13 @@
             return yati.router.link('module', null, null, null, this.filter() || 'all', page);
         }
     });
+
+    yati.views.TermView = kb.ViewModel.extend({
+        constructor: function (model) {
+            kb.ViewModel.prototype.constructor.call(this, model, {
+                keys: ['msgid', 'msgstr']
+            });
+        }
+    })
 
 }(yati, Backbone, barebone, _, ko, kb));
