@@ -24,7 +24,7 @@
         constructor: function (model) {
             model = yati.app;
             kb.ViewModel.prototype.constructor.call(this, model, {
-                keys: ['title', 'language', 'languageDisplay', 'languages', 'view', 'project', 'module', 'terms'],
+                keys: ['title', 'language', 'languageDisplay', 'languages', 'view', 'project', 'module', 'terms', 'user'],
                 factories: {
                     project: yati.views.ProjectView,
                     projects: collectionFactory(yati.views.ProjectView),

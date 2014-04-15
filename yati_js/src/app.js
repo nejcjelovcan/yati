@@ -113,6 +113,7 @@
             module: {},     // currently selected module
             view: 'index',
             unitParams: { filter: 'all' },
+            user: null,
             terms: []
         },
         relations: [

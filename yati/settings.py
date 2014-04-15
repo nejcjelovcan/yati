@@ -26,6 +26,14 @@ TEMPLATE_DEBUG = True
 
 ALLOWED_HOSTS = []
 
+AUTH_USER_MODEL = 'yati_api.User'
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'guardian.backends.ObjectPermissionBackend',
+)
+
+ANONYMOUS_USER_ID = None
 
 # Application definition
 
@@ -39,6 +47,7 @@ INSTALLED_APPS = (
     'south',
     'rest_framework',
     'yati_api',
+    'guardian',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -92,10 +101,16 @@ STATIC_ROOT = 'static'
 REST_FRAMEWORK = {
     'PAGINATE_BY': 50,
     'PAGINATE_BY_PARAM': 'page_size',
-    'MAX_PAGINATE_BY': 100
+    'MAX_PAGINATE_BY': 100,
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAdminUser',
+        'rest_framework.permissions.DjangoObjectPermissions',
+    ),
     #'FILTER_BACKEND': 'rest_framework.filters.DjangoFilterBackend',
     #'DEFAULT_AUTHENTICATION_CLASSES': (
-    #   'rest_framework.authentication.SessionAuthentication',
     #)
 }
 

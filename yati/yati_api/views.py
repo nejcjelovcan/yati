@@ -1,9 +1,11 @@
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.shortcuts import render_to_response
+from django.shortcuts import render_to_response, redirect
 from django.conf import settings
 from django.template import RequestContext
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth import authenticate, login
 
-from rest_framework import viewsets, response
+from rest_framework import viewsets, response, permissions
 
 import serializers
 from models import Project, Store, Unit, Module, Location
@@ -14,6 +16,10 @@ LANGUAGES = dict(sorted(settings.LANGUAGES, key=lambda x: x[1]))
 class ProjectViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ProjectSerializer
     queryset = Project.objects.all()
+    permission_classes = (permissions.DjangoModelPermissions,)
+
+    def get_queryset(self):
+        return Project.objects.all().get_for_user(self.request.user).distinct('id')
 
     #def get_queryset(self):
     #    language = self.request.GET.get('language')
@@ -21,9 +27,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
     #    if language: qs = qs.filter(stores__targetlanguage=language).distinct('id')
     #    return qs
 
-class StoreViewSet(viewsets.ModelViewSet):
-    serializer_class = serializers.StoreSerializer
-    queryset = Store.objects.all()
+# class StoreViewSet(viewsets.ModelViewSet):
+#     serializer_class = serializers.StoreSerializer
+#     queryset = Store.objects.all()
 
 class UnitViewSet(viewsets.ModelViewSet):
     queryset = Unit.objects.all()
@@ -95,8 +101,17 @@ class LanguageQueryset(list):
 class LanguageViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.LanguageSerializer
     queryset = LanguageQueryset(sorted([Language(id=item, display=LANGUAGES[item]) for item in LANGUAGES], key=lambda l: l.get('id')))
+    permission_classes = (permissions.AllowAny,)    # this is bad, but we're read only
     paginate_by = 500
 
 @ensure_csrf_cookie
 def main(request):
-    return render_to_response('main.html', {}, context_instance=RequestContext(request))
+    data = dict()
+    if request.user.is_anonymous:
+        post = request.method=='POST'
+        form = AuthenticationForm(data=request.POST if post else None)
+        if post and form.is_valid():
+            login(request, form.user_cache)
+        else: data['login_form'] = form
+
+    return render_to_response('main.html', data, context_instance=RequestContext(request))

@@ -55,7 +55,7 @@ Module
 import os
 import re
 import json
-import dateutil
+import time
 import datetime
 import StringIO
 
@@ -67,18 +67,96 @@ from translate.tools import poterminology
 from translate.storage import pypo, poparser
 from translate.misc.multistring import multistring
 
+from guardian.models import UserObjectPermissionBase
+from guardian.shortcuts import get_objects_for_user
+
 from django.db import models
 from django.db.models.query import Q
 from django.conf import settings
 from django.utils.translation import ugettext as _
+from django.contrib.auth.models import User
+from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
+
+from settings import get_setting
 
 class YatiException(Exception):
     pass
+
+class UserManager(BaseUserManager):
+    def create_user(self, email, password=None):
+        if not email:
+            raise ValueError('Users must have an email address')
+
+        user = self.model(
+            email=self.normalize_email(email)
+        )
+
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password):
+        user = self.create_user(email,
+            password=password
+        )
+        user.is_staff = True
+        user.save(using=self._db)
+        return user
+
+class User(AbstractBaseUser, PermissionsMixin):
+    email = models.EmailField('email address', unique=True)
+    is_staff = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    languages = models.CharField(default=None, null=True, max_length=255)
+
+    objects = UserManager()
+
+    USERNAME_FIELD = 'email'
+        
+    def __unicode__(self):
+        return self.email
+
+    def is_admin():
+        doc = "Alias for is_staff"
+        def fget(self):
+            return self.is_staff
+        def fset(self, value):
+            self.is_staff = value
+        return locals()
+    is_admin = property(**is_admin())
+
+    def get_full_name(self):
+        return self.email
+
+    def get_short_name(self):
+        return self.email
+
+    def get_languages(self):
+        if self.languages:
+            return filter(bool, self.languages.split(','))
+        return []
+
+    # def has_perm(self, perm, obj=None):
+    # def has_module_perms(self, app_label):
+
+class ProjectQuerySet(models.query.QuerySet):
+    def get_for_user(self, user):   # @TODO also check module permissions for project ?!
+        if user.is_admin or user.has_perm('yati_api.change_project'
+            or user.has_perm('yati_api.contribute_project')): return self
+        return get_objects_for_user(user, ['yati_api.contribute_project', 'yati_api.change_project'], any_perm=True)
+
 
 class Project(models.Model):
     unit_manager_filter = 'by_project'
 
     name = models.CharField(max_length=255)
+
+    objects = PassThroughManager.for_queryset_class(ProjectQuerySet)()
+
+    class Meta:
+        permissions = (
+            ('contribute_project', 'Can contribute translations to a project'),
+        )
 
     def __unicode__(self):
         return u'"%s"'%self.name
@@ -125,6 +203,9 @@ class Project(models.Model):
         # @TODO some kind of auto updating mechanism?
         return self.get_terminology_store(targetlanguage).units.all().by_msgid_levens(query)
 
+# class ProjectUserObjectPermission(UserObjectPermissionBase):
+#     content_object = models.ForeignKey(Project)
+
 class Store(models.Model):
     """
     Store
@@ -132,6 +213,9 @@ class Store(models.Model):
     This is mainly used as a Pofile abstraction,
     but also as a virtual Terminology Pofile
     (one per project/language expected)
+
+    @TODO support dynamic files (e.g. no source means pofile can be found somwhere under 'id'.po)
+    @TODO actually reconsider if source should ever be used for anything else than remembering uploaded filename
     """
 
     TYPE_CHOICES = (
@@ -143,11 +227,15 @@ class Store(models.Model):
 
     type = models.CharField(choices=TYPE_CHOICES, default='po', max_length=100)
     project = models.ForeignKey(Project, related_name='stores')
-    source = models.TextField(_('Store source (e.g. filename)'), null=True)
+    #source = models.TextField(_('Store source (e.g. filename)'), null=True)
+    filename = models.TextField(_('Filename'))  # just for info
     sourcelanguage = models.CharField(choices=settings.LANGUAGES, default='en', max_length=10)
     targetlanguage = models.CharField(choices=settings.LANGUAGES, max_length=10, null=False, blank=False)
     last_read = models.DateTimeField(_('Last read time'), blank=True, null=True)
     last_write = models.DateTimeField(_('Last write time'), blank=True, null=True)
+
+    def __unicode__(self):
+        return u'%s, (%s -> %s), project: %s'%(self.getDirname() if self.type == 'po' else 'TERMINOLOGY', self.sourcelanguage, self.targetlanguage, self.project.name)
 
     @property
     def header(self):
@@ -162,8 +250,23 @@ class Store(models.Model):
             return pofile.parseheader()
         return {}
 
-    def __unicode__(self):
-        return u'%s, (%s -> %s), project: %s'%(self.source if self.type == 'po' else 'TERMINOLOGY', self.sourcelanguage, self.targetlanguage, self.project.name)
+    @property
+    def lastExport(self):
+        try: last_export = self.logs.filter(event='export').order_by('-time')[0].time
+        except IndexError: pass
+
+    @property
+    def lastImport(self):
+        try: last_export = self.logs.filter(event='import').order_by('-time')[0].time
+        except IndexError: pass
+
+    def getDirname(self):
+        assert self.type == 'po'
+        # @TODO unix folder limits
+        return os.path.join(get_setting('STORE_PATH'), str(self.id))
+
+    def getFilename(self, path):
+        return os.path.join(self.getDirname(), path)
 
     def read(self, path=None):
         """
@@ -173,15 +276,15 @@ class Store(models.Model):
         """
         assert self.type == 'po'
         pofile = pypo.pofile()
-        handle = open(path or self.source, 'r')
+        handle = open(path or self.getFilename('import.po'), 'r')
         pofile.parse(handle)
         handle.close()
         return pofile
-        
-    def update(self):    
-        return getattr(self, 'update_%s'%self.type)()
 
-    def update_term(self, stores=None):
+    def update(self, *args, **kwargs):
+        return getattr(self, 'update_%s'%self.type)(*args, **kwargs)
+
+    def update_term(self, stores=None, user=None):
         """
         Export terminology from specified stores
         and update units in this store
@@ -196,8 +299,8 @@ class Store(models.Model):
             tex = poterminology.TerminologyExtractor()
 
             for store in stores:
-                pof = store.read()
-                tex.processunits(pof.units, store.source)
+                pof = store.to_pofile()
+                tex.processunits(pof.units, 'Store %s'%store.id)
 
             terminology = tex.extract_terms()
             i = 0
@@ -217,37 +320,99 @@ class Store(models.Model):
 
                 i += 1
 
-    def update_po(self, pofile=False):
+        self.logs.create(user=user, event='import', 
+            data='Stores: %s'%(','.join(map(lambda s: str(s.id), stores))))
+
+    def update_po(self, pofile=False, user=None, data=None, overwrite='time'):
         """
         Update units in database with given pofile
         If no pofile passed, it will be taken from self.read()
 
-        If pofile and database have different target strings for
-        the same msgid, database version will prevail
+        If unit is already found in database (has same msgid)
+        times will be checked. If store was exported after
+        user change was done to the unit, it will be overwritten,
+        otherwise 
 
-        @TODO must check for obsolete translations and mark them as such in database
+        overwrite options:
+        'never' or False        never overwrite database translations
+        'time' or None          overwrite database translations if store export happened after unit user change
+        'always' or True        always overwrite
+
+        @TODO backup store before importing
         """
-        if not pofile: pofile = self.read()
+        # backup, first (unless no units)
+        if self.units.all().exists():
+            self.write(fn=self.getFilename('backup_%s.po'%time.time()))
+
+        # determine pofile (default [store_path]/[id]/import.po)
+        if isinstance(pofile, basestring):
+            if not data: data = pofile
+            pofile = self.read(pofile)
+        elif not pofile:
+            if not data: data = self.getFilename('import.po')
+            pofile = self.read()
+
+        # resolve overwrite rule
+        if overwrite == None: overwrite = 'time'
+        elif overwrite == True: overwrite = 'always'
+        elif overwrite == False: overwrite = 'never'
+        assert overwrite in ('time', 'always', 'never')
+
+        # remember updated unit ids so that we know which are obsolete
+        # @TODO better way
+        unit_ids = list(self.units.exclude(obsolete=True).values_list('id', flat=True))
         for i in xrange(len(pofile.units)):
             pounit = pofile.units[i]
-            unit = None
+            unit, new, update = None, False, overwrite == 'always'
             try:
                 unit = self.units.get(msgid=Unit.pounit_get(pounit, 'source'))
+                if overwrite == 'time':
+                    if not self.lastExport or not unit.lastChange: update = True
+                    elif self.lastExport > unit.lastChange: update = True
+                    elif unit.pounit_msgstr_equals(pounit): update = True
+                elif overwrite == 'never': update = False
             except Unit.DoesNotExist:
+                new, update = True, True
                 unit = Unit(store=self)
-            unit.index = i  # @TODO ?
-            unit.from_pounit(pounit)
+            if update:
+                unit.index = i  # @TODO ?
+                unit.obsolete = False
+                unit.from_pounit(pounit, event=('import_new' if new else 'import', ''), user=user)
 
-    def write(self, handle=None):
+            if unit.id in unit_ids: unit_ids.remove(unit.id)
+
+        # go through unit id's that are left over and mark them as obsolete
+        # @TODO better way (we have logs!)
+        for i in range(len(unit_ids)/10 + 1):
+            ids = unit_ids[i*10:i*10+10]
+            for unit in Unit.objects.filter(id__in=ids):
+                unit.obsolete = True
+                unit.save(user=user, event='obsolete')
+
+        self.logs.create(user=user, event='import', data=data)
+
+    def write(self, fn=None, handle=None, user=None, data=None, log=False):
         """
         Write the actual pofile to the disk (or given handle)
+
+        If log is false (which is default), no log will be written
+        (useful if write will not result in source update
+        since units can be marked as changed after last export)
+        @TODO confusing but should be handled by API
+            for the usual use cases
         """
+        if self.type == 'term' and not handle: raise YatiException('Specify handle when writing terminology store')
         if not handle:
-            if self.type == 'term': raise YatiException('Specify handle when writing terminology store')
-            handle = open(self.source, 'w')
+            if not fn:
+                fn = self.getFilename('export_%s.po'%time.time())
+            if not data: data = fn
+            handle = open(fn, 'w')
 
         pofile = self.to_pofile()
         handle.write(str(pofile))
+        if log:
+            self.logs.create(user=user, event='export', data=data)
+        return fn
 
     def to_pofile(self, pofile=None):
         """
@@ -345,10 +510,10 @@ class Unit(models.Model):
     msgid = dbarray.TextArrayField(default=[], null=True)
     msgstr = dbarray.TextArrayField(default=[])
     comments = models.TextField(default='')
-    #last_read
-    #last_write
-    #prev_msgid ???
-    #@TODO unique(store, msgid) ?
+    fuzzy = models.BooleanField(default=False)
+    obsolete = models.BooleanField(default=False)
+
+    # @TODO unique(store, msgid) ? -- this is respected upon imports so we should make it a DB constraint
 
     objects = PassThroughManager.for_queryset_class(UnitQuerySet)()
 
@@ -358,15 +523,21 @@ class Unit(models.Model):
     def to_pounit(self):
         return Unit.to_pypo(self)
 
-    def from_pounit(self, pounit):
+    def from_pounit(self, pounit, user=None, event=None):
         unit = Unit.from_pypo(pounit)
         for attr in ('msgid', 'msgstr', 'comments'):
             setattr(self, attr, getattr(unit, attr))
-        self.save()
+        self.fuzzy = pounit.isfuzzy()
+        self.save(event=event, user=user)
         self.locations.all().delete()
         for location in pounit.getlocations():
             fn, lineno = location.split(':')
             self.locations.create(filename=fn, lineno=lineno)
+
+    @property
+    def lastChange(self):
+        try: self.logs.filter(type='change').order_by('-time')[0].time
+        except IndexError: return None
 
     def __unicode__(self):
         if self.hasplural():
@@ -405,6 +576,62 @@ class Unit(models.Model):
         if attr == 'source' and pounit.source == []: return None
         return map(unicode, getattr(pounit, attr).strings if pounit.hasplural() else [getattr(pounit, attr)])
 
+    def pounit_msgstr_equals(self, pounit):
+        target = Unit.pounit_get(pounit, 'target')
+        if len(target) != len(self.msgstr): return False
+        for i in range(len(pounit.msgstr)):
+            if target[i] != self.msgstr[i]: return False
+        return True
+
+    def save(self, *args, **kwargs):
+        event = kwargs.pop('event', None)
+        user = kwargs.pop('user', None)
+        # assert event and user @TODO
+        result = super(Unit, self).save(*args, **kwargs)
+        if event:
+            if type(event) in (list, tuple):
+                try: data = event[1]
+                except IndexError: pass
+                event = event[0]
+            self.logs.create(user=user, event=event, data=data)
+        return result
+
+STORE_LOG_EVENTS = (
+    ('import', 'Imported pofile'),
+    ('export', 'Exported pofile'),
+    ('term', 'Collected terminology'),
+)
+
+UNIT_LOG_EVENTS = (
+    ('import', 'Unit was imported'),
+    ('import_new', 'Unit was newly imported'),
+    #('import_ignore', 'Unit should be imported but was changed in the database')
+    ('change', 'Unit was changed by user'),
+    ('obsolete', 'Unit was marked as obsolete'),
+)
+
+class AbstractLog(models.Model):
+    time = models.DateTimeField(auto_now_add=True)
+    data = models.TextField(null=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True)   # @TODO null=true???
+
+    class Meta:
+        abstract = True
+
+class StoreLog(AbstractLog):
+    store = models.ForeignKey(Store, related_name='logs')
+    event = models.CharField(max_length=255, choices=STORE_LOG_EVENTS)
+
+    def __unicode__(self):
+        return '[%s] (%s) %s: %s'%(self.time.isoformat(), self.user, dict(STORE_LOG_EVENTS)[self.event], self.data)
+
+class UnitLog(AbstractLog):
+    unit = models.ForeignKey(Unit, related_name='logs')
+    event = models.CharField(max_length=255, choices=UNIT_LOG_EVENTS)
+
+    def __unicode__(self):
+        return '[%s] (%s) %s: %s'%(self.time.isoformat(), self.user, dict(UNIT_LOG_EVENTS)[self.event], self.data)
+
 class LocationQuerySet(models.query.QuerySet):
     def distinct_filenames(self):
         return self.distinct('filename').order_by('filename').values_list('filename', flat=True)
@@ -428,6 +655,12 @@ class Location(models.Model):
     def __unicode__(self):
         return u'%s:%s'%(self.filename, self.lineno)
 
+class ModuleQuerySet(models.query.QuerySet):
+    def get_for_user(self, user):   # @TODO also check module permissions for project ?!
+        if user.is_admin or user.has_perm('yati_api.change_module'
+            or user.has_perm('yati_api.contribute_module')): return self
+        return get_objects_for_user(user, ['yati_api.contribute_module', 'yati_api.change_module'], any_perm=True)
+
 class Module(models.Model):
     """
     Group of several units matched by location pattern
@@ -440,21 +673,21 @@ class Module(models.Model):
     name = models.CharField(max_length=255)
     pattern = models.TextField(null=True)   # null pattern means units with no location will be matched
 
+    objects = PassThroughManager.for_queryset_class(ModuleQuerySet)()
+
     @property
     def units(self):
         return Unit.objects.all().exclude_terminology().by_module(self).order_by('index').distinct('index')
+
+    class Meta:
+        permissions = (
+            ('contribute_module', 'Can contribute translations to module'),
+        )
 
     def __unicode__(self):
         return u'%s: %s (%s)'%(self.project.name, self.name, self.pattern)
 
 
 """
-[{'id': 2, 'name': u'Custom VLN', 'description': None, 'pattern': u'_custom/vln/'},
- {'id': 4, 'name': u'Video player', 'description': None, 'pattern': u'/smileplayer/'},
- {'id': 3, 'name': u'Janitor', 'description': None, 'pattern': u'janitor/'},
- {'id': 6, 'name': u'Mailing', 'description': None, 'pattern': u'mailing/'},
- {'id': 7, 'name': u'Campaigns', 'description': None, 'pattern': u'campaigns/'},
- {'id': 5, 'name': u'Registration', 'description': None, 'pattern': u'/registration'},
- {'id': 8, 'name': u'Payments', 'description': None, 'pattern': u'payments/'},
- {'id': 9, 'name': u'Views', 'description': None, 'pattern': u'vl/;api/;attachments/;authviidea/;categories/;jobs/;permissions/;statistics/'}]
+Groups:
 """

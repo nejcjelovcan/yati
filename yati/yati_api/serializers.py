@@ -5,7 +5,7 @@ from django.utils.translation import ugettext as _
 
 from rest_framework import serializers, fields, six
 
-from models import Project, Store, Unit, Location, Module
+from models import Project, Store, Unit, Location, Module, User
 
 class ArrayField(fields.CharField):
     """
@@ -47,17 +47,21 @@ class ProjectSerializer(serializers.ModelSerializer, UnitSetCounts):
         model = Project
         fields = ('id', 'name', 'modules', 'units_count', 'targetlanguages')
 
-    modules = ModuleSerializer(many=True)
+    #modules = ModuleSerializer(many=True)
+    modules = serializers.SerializerMethodField('get_modules')
     units_count = serializers.SerializerMethodField('get_count')
     targetlanguages = serializers.SerializerMethodField('get_targetlanguages')
 
     def get_targetlanguages(self, project):
         return project.targetlanguages
 
-class StoreSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Store
-        fields = ('id', 'sourcelanguage', 'targetlanguage', 'source')
+    def get_modules(self, project):
+        return ModuleSerializer(project.modules.get_for_user(self.context.get('request').user), context=self.context, many=True).data
+
+# class StoreSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Store
+#         fields = ('id', 'sourcelanguage', 'targetlanguage', 'source')
 
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -107,3 +111,21 @@ class LanguageSerializer(serializers.Serializer):
 
     id = serializers.CharField(read_only=True)
     display = serializers.CharField(read_only=True)
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'email', 'is_admin', 'languages', 'permissions')
+
+    languages = serializers.SerializerMethodField('get_languages')
+    permissions = serializers.SerializerMethodField('get_permissions')
+
+    def get_languages(self, user):
+        return user.get_languages()
+
+    def get_permissions(self, user):
+        permissions = []
+        for perm in ('add_project',):
+            if user.is_admin or user.has_perm(perm):
+                permissions.append(perm)
+        return permissions

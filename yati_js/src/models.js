@@ -48,6 +48,13 @@
         }
     };
 
+    yati.models.User = barebone.Model.extend({
+        defaults: { permissions: [] },
+        has_perm: function (perm) {
+            return this.get('permissions').indexOf(perm) > -1;
+        }
+    });
+
     yati.models.Project = barebone.Model.extend(_({
         urlRoot: urlRoot+'projects/',
         defaults: {
@@ -154,6 +161,7 @@
         model: yati.models.Term
     });
 
+/*
     yati.models.String = barebone.Model.extend({
         defaults: {
             value: ''
@@ -163,5 +171,5 @@
     yati.models.Strings = barebone.Collection.extend({
         model: yati.models.String
     });
-
+*/
 }(window.yati, window.Backbone, window.barebone));
