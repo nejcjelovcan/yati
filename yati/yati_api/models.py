@@ -67,9 +67,6 @@ from translate.tools import poterminology
 from translate.storage import pypo, poparser
 from translate.misc.multistring import multistring
 
-from guardian.models import UserObjectPermissionBase
-from guardian.shortcuts import get_objects_for_user
-
 from django.db import models
 from django.db.models.query import Q
 from django.conf import settings
