@@ -24,29 +24,30 @@
         constructor: function (model) {
             model = yati.app;
             kb.ViewModel.prototype.constructor.call(this, model, {
-                keys: ['title', 'language', 'languageDisplay', 'languages', 'view', 'project', 'module', 'terms', 'user'],
+                keys: ['language', 'languageDisplay', 'languages', 'view', 'project', 'module', 'terms', 'user'],
                 factories: {
                     project: yati.views.ProjectView,
                     projects: collectionFactory(yati.views.ProjectView),
                     module: yati.views.ModuleView,
-                    terms: collectionFactory(yati.views.TermView)
+                    terms: collectionFactory(yati.views.TermView),
+                    user: yati.views.UserView
                 }
             });
 
             yati.appView = this;
 
-            Backbone.history.start();
+            Backbone.history.start({pushState: true});
             $(document).foundation();
         }
     });
 
-    yati.views.LanguageView = kb.ViewModel.extend({
+    /*yati.views.LanguageView = kb.ViewModel.extend({
         constructor: function (model) {
             kb.ViewModel.prototype.constructor.call(this, model,
-                ['id', 'display']);
+                ['id', 'display', 'country']);
             this.model = model;
         }
-    });
+    });*/
 
     yati.views.ProjectView = kb.ViewModel.extend({
         constructor: function (model) {
@@ -61,10 +62,11 @@
                 // @TODO subset languages colletion??
                 // @TODO this observable needs dependencies (when langauges will be added)
                 // @TODO unsafe if language not found in languages collection
-                return _(this.model().get('targetlanguages')).map(function (l) {
-                    var lang = yati.app.get('languages').get(l);
-                    return {id: l, display: lang ? lang.get('display') : l};
-                });
+                return _(this.model().getLanguagesForUser(yati.app.get('user')))
+                    .map(function (l) {
+                        var lang = yati.app.get('languages').get(l);
+                        return {id: l, display: lang ? lang.get('display') : l, country: lang.get('country') };
+                    });
 
             }, this);
 
@@ -166,6 +168,14 @@
                 keys: ['msgid', 'msgstr']
             });
         }
-    })
+    });
+
+    yati.views.UserView = kb.ViewModel.extend({
+        constructor: function (model) {
+            kb.ViewModel.prototype.constructor.call(this, model, {
+                keys: ['email']
+            });
+        }
+    });
 
 }(yati, Backbone, barebone, _, ko, kb));

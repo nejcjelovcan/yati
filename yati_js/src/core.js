@@ -3,8 +3,19 @@
     var events = Object.create(window.Backbone.Events);
     (window.yati && window._(window.yati).extend(events)) || (window.yati = events);
 
+    // pushstate link handling
+    $(document).on('click', 'a[href^=\'/\']', function (event) {
+        var el = $(event.currentTarget),
+            href = el.attr('href');
+        if (!el.hasClass('link-raw') && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+            event.preventDefault();
+            // remove #! here
+            window.yati.router.navigate(href, {trigger: true});
+            return false;
+        }
+    });
 
-    // THIS IS FUGLY
+    // CSRF handling
     function getCookie(name) {
         var cookieValue = null;
         if (document.cookie && document.cookie != '') {
@@ -33,6 +44,5 @@
             }
         }
     });
-    // END THIS IS FUGLY
     
 }(window));

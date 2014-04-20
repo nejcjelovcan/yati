@@ -1,11 +1,12 @@
 import os
 import StringIO
+import json
 
 from django.test import TestCase
 from django.test.client import Client
 from django.conf import settings
 
-from models import Project, Store, Unit, Location, Module, StoreLog, UnitLog
+from models import Project, Store, Unit, Location, Module, StoreLog, UnitLog, User
 
 #from vl.tests import _default_site, _get_user, _test_server, _create_lecture, TestClient, CLIENT_USERNAME, CLIENT_PASSWORD
 
@@ -69,3 +70,49 @@ class ModelTest(TestCase):
         Project.objects.all().delete()
         Store.objects.all().delete()
         Unit.objects.all().delete()
+
+
+class ApiTest(TestCase):
+
+    def _jsonGet(self, *args, **kwargs):
+        return json.loads(self.client.get(*args, **kwargs).content)
+
+    def setUp(self):
+        self.project = Project.objects.create(name='Test')
+        self.project2 = Project.objects.create(name='Test 2')
+        self.store = self.project.stores.create(filename='test.po', targetlanguage='sl')
+        self.importfile = os.path.join(PATH, 'testmedia/test.sl.po')
+        self.store.update(self.importfile)
+
+        self.admin = User.objects.create_user(email='nejc@example.com', password='test')
+        self.admin.is_staff = True
+        self.admin.save()
+
+        self.user = User.objects.create_user(email='stefka@example.com', password='test')
+
+        self.client = Client()
+
+    def testBasicPermissions(self):
+        response = self._jsonGet('/yati/projects/')
+        self.assertEqual(response.get('detail'), 'Authentication credentials were not provided.')
+
+        self.client.login(email='nejc@example.com', password='test')
+        response = self._jsonGet('/yati/projects/')
+        self.assertEqual(response.get('count'), 2)
+
+        self.client.logout()
+        self.client.login(email='stefka@example.com', password='test')
+        response = self._jsonGet('/yati/projects/')
+        self.assertEqual(response.get('count'), 0)
+
+        from guardian.shortcuts import assign_perm
+        assign_perm('contribute_project', self.user, self.project)
+
+        response = self._jsonGet('/yati/projects/')
+        self.assertEqual(response.get('count'), 1)
+
+    def tearDown(self):
+        Project.objects.all().delete()
+        Store.objects.all().delete()
+        Unit.objects.all().delete()
+        User.objects.all().delete()

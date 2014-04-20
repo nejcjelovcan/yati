@@ -54,8 +54,6 @@ class Migration(SchemaMigration):
             ('filename', self.gf('django.db.models.fields.TextField')()),
             ('sourcelanguage', self.gf('django.db.models.fields.CharField')(default='en', max_length=10)),
             ('targetlanguage', self.gf('django.db.models.fields.CharField')(max_length=10)),
-            ('last_read', self.gf('django.db.models.fields.DateTimeField')(null=True, blank=True)),
-            ('last_write', self.gf('django.db.models.fields.DateTimeField')(null=True, blank=True)),
         ))
         db.send_create_signal(u'yati_api', ['Store'])
 
@@ -189,8 +187,6 @@ class Migration(SchemaMigration):
             'Meta': {'object_name': 'Store'},
             'filename': ('django.db.models.fields.TextField', [], {}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'last_read': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
-            'last_write': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
             'project': ('django.db.models.fields.related.ForeignKey', [], {'related_name': "'stores'", 'to': u"orm['yati_api.Project']"}),
             'sourcelanguage': ('django.db.models.fields.CharField', [], {'default': "'en'", 'max_length': '10'}),
             'targetlanguage': ('django.db.models.fields.CharField', [], {'max_length': '10'}),

@@ -57,7 +57,7 @@ import re
 import json
 import time
 import datetime
-import StringIO
+import cStringIO
 
 import Levenshtein
 import dbarray
@@ -78,6 +78,17 @@ from settings import get_setting
 
 class YatiException(Exception):
     pass
+
+def q_by_languages(target=None, source=None, prefix='store__'):
+    assert target or source, "Specify target our source language"
+    QQ = lambda field, val: Q(**{prefix + field + 'language__in': val})
+    q, q1 = None, None
+    if target and type(target) not in (tuple, list): target = [target]
+    if source and type(source) not in (tuple, list): source = [source]
+    if target: q = QQ('target', target)
+    if source: q1 = QQ('source', source)
+    q = q & q1 if q and q1 else (q1 or q)
+    return q
 
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None):
@@ -101,9 +112,20 @@ class UserManager(BaseUserManager):
         return user
 
 class User(AbstractBaseUser, PermissionsMixin):
+    """
+    Custom user model (email-based with password)
+
+    Has languages field (comma separated language codes)
+
+    Some manager filters (e.g. Project.get_for_user)
+    will filter only projects that have targetlanguages present
+    in user's language field
+    (unless languages==null or user.is_staff==true)
+    """
+
     email = models.EmailField('email address', unique=True)
     is_staff = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     languages = models.CharField(default=None, null=True, max_length=255)
 
     objects = UserManager()
@@ -133,15 +155,25 @@ class User(AbstractBaseUser, PermissionsMixin):
             return filter(bool, self.languages.split(','))
         return []
 
-    # def has_perm(self, perm, obj=None):
-    # def has_module_perms(self, app_label):
+    def set_languages(self, languages):
+        self.languages = ','.join(languages)+','
 
 class ProjectQuerySet(models.query.QuerySet):
-    def get_for_user(self, user):   # @TODO also check module permissions for project ?!
+    def get_for_user(self, user):
+        # @TODO also check module permissions for project ?!
+
+        from guardian.shortcuts import get_objects_for_user
         if user.is_admin or user.has_perm('yati_api.change_project'
             or user.has_perm('yati_api.contribute_project')): return self
-        return get_objects_for_user(user, ['yati_api.contribute_project', 'yati_api.change_project'], any_perm=True)
+        qs = get_objects_for_user(user, ['yati_api.contribute_project', 'yati_api.change_project'], any_perm=True)
 
+        langs = user.get_languages()
+        if len(langs):
+            qs = qs.by_language(target=langs)
+        return qs
+
+    def by_language(self, target=None, source=None):
+        return self.filter(q_by_languages(target, source, prefix='stores__'))
 
 class Project(models.Model):
     unit_manager_filter = 'by_project'
@@ -224,12 +256,9 @@ class Store(models.Model):
 
     type = models.CharField(choices=TYPE_CHOICES, default='po', max_length=100)
     project = models.ForeignKey(Project, related_name='stores')
-    #source = models.TextField(_('Store source (e.g. filename)'), null=True)
     filename = models.TextField(_('Filename'))  # just for info
     sourcelanguage = models.CharField(choices=settings.LANGUAGES, default='en', max_length=10)
     targetlanguage = models.CharField(choices=settings.LANGUAGES, max_length=10, null=False, blank=False)
-    last_read = models.DateTimeField(_('Last read time'), blank=True, null=True)
-    last_write = models.DateTimeField(_('Last write time'), blank=True, null=True)
 
     def __unicode__(self):
         return u'%s, (%s -> %s), project: %s'%(self.getDirname() if self.type == 'po' else 'TERMINOLOGY', self.sourcelanguage, self.targetlanguage, self.project.name)
@@ -438,7 +467,7 @@ class UnitQuerySet(models.query.QuerySet):
     def by_module(self, module, exclude=False, query=False):
         """
         Warning: this can return duplicate units
-        use e.g. .order_by('msgid').distinct('msgid')
+        use e.g. .order_by('id').distinct('id')
         """
         q = None
         if module.pattern: q = Q(store__project=module.project, locations__filename__icontains=module.pattern)
@@ -451,12 +480,7 @@ class UnitQuerySet(models.query.QuerySet):
         return self.filter(store__project=project)
 
     def by_language(self, target=None, source=None):
-        assert target or source, "Specify target our source language"
-        q, q1 = None, None
-        if target: q = Q(store__targetlanguage=target)
-        if source: q1 = Q(store__sourcelanguage=source)
-        q = q & q1 if q and q1 else (q1 or q)
-        return self.filter(q)
+        return self.filter(q_by_languages(target, source, prefix='store__'))
 
     def exclude_header(self):
         return self.exclude(index=0, msgid=[''])
@@ -550,10 +574,10 @@ class Unit(models.Model):
         pounit = pypo.pounit(source=multistring(unit.msgid) if unit.hasplural() else (unit.msgid[0] if len(unit.msgid) else ''))
         pounit.target = multistring(unit.msgstr) if unit.hasplural() else unit.msgstr[0]
 
-        # comments @TODO unicode->str happens here just like that
         if unit.comments:
-            ps = poparser.ParseState(StringIO.StringIO(str(unit.comments)),
-                pypo.pounit)
+            ps = poparser.ParseState(cStringIO.StringIO(unit.comments.encode('utf8')),
+                pypo.pounit,
+                encoding='utf-8')
             poparser.parse_comments(ps, pounit)
 
         return pounit
@@ -654,9 +678,22 @@ class Location(models.Model):
 
 class ModuleQuerySet(models.query.QuerySet):
     def get_for_user(self, user):   # @TODO also check module permissions for project ?!
+        "Warning: this resets the queryset chain"
+        from guardian.shortcuts import get_objects_for_user
         if user.is_admin or user.has_perm('yati_api.change_module'
             or user.has_perm('yati_api.contribute_module')): return self
         return get_objects_for_user(user, ['yati_api.contribute_module', 'yati_api.change_module'], any_perm=True)
+
+    def get_for_unit(self, unit):
+        "Reverse for UnitQuerySet.by_model @1337 @TODO test"
+        ors = []
+        for location in unit.locations.all().values_list('filename', flat=True):
+            ors.append(('%s LIKE %s || pattern',  (location.filename, '%')))
+        return self.filter(project=unit.store.project)\
+            .extra(
+                where=[' OR '.join(map(lambda p: p[0], ors))],
+                params=reduce(tuple.__add__, map(lambda p: p[1], ors), ())
+            )
 
 class Module(models.Model):
     """
@@ -674,7 +711,7 @@ class Module(models.Model):
 
     @property
     def units(self):
-        return Unit.objects.all().exclude_terminology().by_module(self).order_by('index').distinct('index')
+        return Unit.objects.all().exclude_terminology().by_module(self).order_by('id').distinct('id')
 
     class Meta:
         permissions = (
@@ -683,8 +720,3 @@ class Module(models.Model):
 
     def __unicode__(self):
         return u'%s: %s (%s)'%(self.project.name, self.name, self.pattern)
-
-
-"""
-Groups:
-"""

@@ -1,4 +1,5 @@
 import json
+import locale
 
 from django import forms
 from django.utils.translation import ugettext as _
@@ -20,6 +21,7 @@ class ArrayField(fields.CharField):
     widget = forms.Textarea
 
     def from_native(self, value):
+        print 'FROM_NATIVE', value
         if isinstance(value, six.string_types):
             return json.loads(value)
         elif not type(value) in (list, tuple):
@@ -56,7 +58,13 @@ class ProjectSerializer(serializers.ModelSerializer, UnitSetCounts):
         return project.targetlanguages
 
     def get_modules(self, project):
-        return ModuleSerializer(project.modules.get_for_user(self.context.get('request').user), context=self.context, many=True).data
+        user = self.context.get('request').user
+        qs = project.modules
+        if user.has_perm('contribute_project', project) or user.has_perm('change_project'):
+            qs = qs.all()
+        else:
+            qs = qs.get_for_user(user)
+        return ModuleSerializer(qs, context=self.context, many=True).data
 
 # class StoreSerializer(serializers.ModelSerializer):
 #     class Meta:
@@ -111,11 +119,20 @@ class LanguageSerializer(serializers.Serializer):
 
     id = serializers.CharField(read_only=True)
     display = serializers.CharField(read_only=True)
+    country = serializers.SerializerMethodField('get_country')
+
+    def get_country(self, lang):
+        "@TODO not politically correct"
+        if '-' in lang.id: return lang.id.split('-')[1]
+        norm = locale.normalize(lang.id).split('_')
+        if len(norm) > 1:
+            return norm[1].split('.')[0].lower()
+        return lang.id
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'email', 'is_admin', 'languages', 'permissions')
+        fields = ('id', 'email', 'is_staff', 'languages', 'permissions')
 
     languages = serializers.SerializerMethodField('get_languages')
     permissions = serializers.SerializerMethodField('get_permissions')

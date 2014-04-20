@@ -1,15 +1,20 @@
+import json
+
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.shortcuts import render_to_response, redirect
 from django.conf import settings
 from django.template import RequestContext
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import authenticate, login
+from django.contrib.auth import logout as auth_logout
+from django.core.urlresolvers import reverse
 
 from rest_framework import viewsets, response, permissions
 
 import serializers
 from models import Project, Store, Unit, Module, Location
 from yati_api.settings import get_setting
+from yati_api.permissions import UnitPermissions
 
 LANGUAGES = dict(sorted(settings.LANGUAGES, key=lambda x: x[1]))
 
@@ -33,6 +38,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
 class UnitViewSet(viewsets.ModelViewSet):
     queryset = Unit.objects.all()
+    permission_classes = (UnitPermissions,)
 
     def get_queryset(self):
         qs = Unit.objects.all().exclude_header().exclude_terminology()
@@ -65,6 +71,8 @@ class TermViewSet(viewsets.ViewSet):
     (otherwise, q parameter is expected)
     lookups are done for words with length min 3 characters
     """
+    
+    permission_classes = (permissions.AllowAny,)
 
     def list(self, request):
         project_id = request.GET.get('project_id')
@@ -94,24 +102,38 @@ class Language(dict):
     def display(self): return self.get('display')
 
 class LanguageQueryset(list):
+    def __init__(self):
+        super(LanguageQueryset, self).__init__(sorted([Language(id=item, display=LANGUAGES[item]) for item in LANGUAGES], key=lambda l: l.get('id')))
+
     def _clone(self):
         import copy
         return copy.copy(self)
 
 class LanguageViewSet(viewsets.ReadOnlyModelViewSet):
+    "@TODO obsolete? we include languages statically..."
     serializer_class = serializers.LanguageSerializer
-    queryset = LanguageQueryset(sorted([Language(id=item, display=LANGUAGES[item]) for item in LANGUAGES], key=lambda l: l.get('id')))
+    queryset = LanguageQueryset()
     permission_classes = (permissions.AllowAny,)    # this is bad, but we're read only
     paginate_by = 500
 
 @ensure_csrf_cookie
 def main(request):
     data = dict()
-    if request.user.is_anonymous:
+    if request.user.is_anonymous():
         post = request.method=='POST'
         form = AuthenticationForm(data=request.POST if post else None)
         if post and form.is_valid():
             login(request, form.user_cache)
+            return redirect(reverse('yati-main'))
         else: data['login_form'] = form
+    else:
+        data['static_data'] = json.dumps(dict(
+            languages = serializers.LanguageSerializer(LanguageQueryset(), many=True).data,
+            user = serializers.UserSerializer(request.user).data
+        ))
 
     return render_to_response('main.html', data, context_instance=RequestContext(request))
+
+def logout(request):
+    auth_logout(request)
+    return redirect(reverse('yati-main'))

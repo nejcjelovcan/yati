@@ -49,12 +49,18 @@ module.exports = function(grunt) {
                 cwd: 'css',
                 src: ['*'],
                 dest: dest_static + 'yati/css/'
+            },
+            img: {
+                expand: true,
+                cwd: 'img',
+                src: ['*'],
+                dest: dest_static + 'yati/img/'
             }
         },
         clean: [dest_static+'*', dest_tpl + '*']
     });
 
-    grunt.registerTask('build', ['clean', 'concat:yati', 'symlink:ext', 'symlink:tpl', 'symlink:devel', 'symlink:css']);
+    grunt.registerTask('build', ['clean', 'concat:yati', 'symlink:ext', 'symlink:tpl', 'symlink:devel', 'symlink:css', 'symlink:img']);
     grunt.registerTask('default', ['build']);
 
 };

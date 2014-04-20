@@ -68,7 +68,10 @@
                 relatedModel: 'yati.models.Module',
                 collectionType: 'yati.models.Modules'
             }
-        ]
+        ],
+        getLanguagesForUser: function (user) {
+            return _(this.get('targetlanguages')).filter(user.hasLanguage);
+        }
     }).extend(UnitSet));
 
     yati.models.Projects = barebone.Collection.extend({
@@ -79,7 +82,8 @@
     yati.models.Language = barebone.Model.extend({
         defaults: {
             id: null,
-            display: null
+            display: null,
+            country: null
         }
     });
 
@@ -127,16 +131,17 @@
                 collectionType: 'yati.models.Strings'
             }
         ],*/
+        initialize: function () {
+            // @TODO this is fucked up
+            // maybe forget the listener until save is done?
+            this.once('change:msgstr', function () { this.save(); }, this);
+        },
         isPlural: function () {
             return !!(this.get('msgid_plural')||[]).length;
         },
         toJSON: function () {
             var json = barebone.Model.prototype.toJSON.call(this);
-            // @TODO order by index
-            //json.msgid = [json.msgid].concat(json.msgid_plural || [])
-            json.msgstr = [json.msgstr].concat(json.msgstr_plural || []);
-            delete json.msgid; delete json.msgid_plural; delete json.msgstr_plural;
-            return json;
+            return {msgstr: [json.msgstr].concat(json.msgstr_plural || [])};
         }
     });
 
@@ -161,15 +166,24 @@
         model: yati.models.Term
     });
 
-/*
-    yati.models.String = barebone.Model.extend({
+    yati.models.User = barebone.Model.extend({
         defaults: {
-            value: ''
+            is_staff: false,
+            languages: [],
+            permissions: [],
+            email: null
+        },
+        initialize: function () {
+            _(this).bindAll('hasLanguage', 'can');
+        },
+        can: function (perm) {
+            return self.get('permissions').indexOf(perm) > -1;
+        },
+        hasLanguage: function (lang) {
+            return this.get('is_staff') ||
+                !this.get('languages').length || 
+                this.get('languages').indexOf(lang) > -1;
         }
     });
 
-    yati.models.Strings = barebone.Collection.extend({
-        model: yati.models.String
-    });
-*/
 }(window.yati, window.Backbone, window.barebone));

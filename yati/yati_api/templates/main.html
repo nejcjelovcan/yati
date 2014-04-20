@@ -8,6 +8,8 @@
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/foundation/5.2.1/css/foundation.min.css" type="text/css" media="screen" />
     <link rel="stylesheet" href="{% static "yati/css/yati.css" %}" type="text/css" media="screen" />
+    <link rel="stylesheet" href="{% static "yati/css/flags32.css" %}" type="text/css" media="screen" />
+    <link rel="stylesheet" href="{% static "yati/css/flags16.css" %}" type="text/css" media="screen" />
 
     <script src="https://cdn.jsdelivr.net/jquery/1.8.3/jquery-1.8.3.min.js"></script>
     <script src="{% static "yati/js/jquery.autosize.min.js" %}"></script>
@@ -17,38 +19,46 @@
     <script src="https://cdn.jsdelivr.net/foundation/5.2.1/js/foundation/foundation.topbar.js"></script>
 
     {% if not user.is_anonymous %}
-        <script src="https://cdn.jsdelivr.net/underscorejs/1.5.2/underscore-min.js"></script>
-        <script src="https://cdn.jsdelivr.net/backbonejs/1.1.2/backbone-min.js"></script>
-        <script src="{% static "yati/js/barebone-backbone.min.js" %}"></script>
-        <script src="https://cdn.jsdelivr.net/knockout/3.1.0/knockout.js"></script>
-        <script src="{% static "yati/js/knockback-core.min.js" %}"></script>
-        <script src="{% static "yati/js/knockback-triggering.min.js" %}"></script>
+      <script>
+        window._yati_data = {{static_data|safe}};
+      </script>
 
-        <script src="{% static "yati/js/core.js" %}"></script>
-        <script src="{% static "yati/js/models.js" %}"></script>
-        <script src="{% static "yati/js/views.js" %}"></script>
-        <script src="{% static "yati/js/app.js" %}"></script>
+      <script src="https://cdn.jsdelivr.net/underscorejs/1.5.2/underscore-min.js"></script>
+      <script src="https://cdn.jsdelivr.net/backbonejs/1.1.2/backbone-min.js"></script>
+      <script src="{% static "yati/js/barebone-backbone.min.js" %}"></script>
+      <script src="https://cdn.jsdelivr.net/knockout/3.1.0/knockout.js"></script>
+      <script src="{% static "yati/js/knockback-core.min.js" %}"></script>
+      <script src="{% static "yati/js/knockback-triggering.min.js" %}"></script>
+
+      <script src="{% static "yati/js/core.js" %}"></script>
+      <script src="{% static "yati/js/models.js" %}"></script>
+      <script src="{% static "yati/js/views.js" %}"></script>
+      <script src="{% static "yati/js/app.js" %}"></script>
     {% endif %}
   </head>
 
   <body>
+    {% include "tpl/navigation.tpl" %}
     {% if not user.is_anonymous %}
-        {% include "tpl/app-view.tpl" %}
-        <script type="text/x-jquery-tmpl" id="index-view">{% include "tpl/index-view.tpl" %}</script>
-        <script type="text/x-jquery-tmpl" id="breadcrumbs-view">{% include "tpl/breadcrumbs-view.tpl" %}</script>
-        <script type="text/x-jquery-tmpl" id="module-view">{% include "tpl/module-view.tpl" %}</script>    
-        <script type="text/x-jquery-tmpl" id="pagination-view">{% include "tpl/pagination-view.tpl" %}</script>    
-        <script type="text/x-jquery-tmpl" id="unit-view">{% include "tpl/unit-view.tpl" %}</script>    
-        <script type="text/x-jquery-tmpl" id="language-view">{% include "tpl/language-view.tpl" %}</script>
-        <script type="text/x-jquery-tmpl" id="terms-view">{% include "tpl/terms-view.tpl" %}</script>
+      {% include "tpl/app-view.tpl" %}
+      <script type="text/x-jquery-tmpl" id="index-view">{% include "tpl/index-view.tpl" %}</script>
+      <script type="text/x-jquery-tmpl" id="breadcrumbs-view">{% include "tpl/breadcrumbs-view.tpl" %}</script>
+      <script type="text/x-jquery-tmpl" id="module-view">{% include "tpl/module-view.tpl" %}</script>    
+      <script type="text/x-jquery-tmpl" id="pagination-view">{% include "tpl/pagination-view.tpl" %}</script>    
+      <script type="text/x-jquery-tmpl" id="unit-view">{% include "tpl/unit-view.tpl" %}</script>    
+      <script type="text/x-jquery-tmpl" id="language-view">{% include "tpl/language-view.tpl" %}</script>
+      <script type="text/x-jquery-tmpl" id="terms-view">{% include "tpl/terms-view.tpl" %}</script>
     {% else %}
-        <form action="?" method="post">   {# @TODO {% url "yati-login" %} not working dont know why #}
+      <br/>
+      <div class="row">
+        <div class="small-10 medium-6 large-4 small-centered medium-centered large-centered columns">
+          <form action="?" method="post">
             {% csrf_token %}
             {{ login_form.as_p }}
-            <input type="submit" value="Login" />
-        </form>
-        {# include "tpl/login-view.tpl" #}
+            <input type="submit" value="Login" class="button radius small columns" />
+          </form>
+        </div>
+      </div>
     {% endif %}
   </body>
-
 </html>

@@ -12,5 +12,109 @@
 }
 
 textarea {
+    margin: 0px;
+    padding: 8px;
+    padding-left: 9px;
+    line-height: 18px;
+    resize: none;
+    height: 110%;   /* careful */
+}
+
+.units-table {
+    border-width: 0px;
+    width: 100%;
+}
+
+.units-table td {
+    vertical-align: top;
+    line-height: 18px;
+    height: 54px;
+}
+
+.units-table td.edit {
+    padding: 0px;
+}
+
+.breadcrumbs {
+    margin-top: 10px;
+}
+
+.terms {
+    position: fixed;
+    left: 0px; right: 0px;
+    bottom: 0px;
+    background-color: #DDD;
+    opacity: .8;
+    border-top: 1px solid #AAA;
+}
+
+.terms table {
+    width: 100%;
     margin-bottom: 0px;
+    background-color: #DDD;
+}
+
+.terms td {
+    padding: 4px;
+    width: 50%;
+}
+
+.terms .close {
+    float: right;
+}
+
+.accordion-head a {
+    padding: 1rem;
+    line-height: 35px;
+    font-size: 18px;
+    padding-left: 0.3rem;
+}
+
+.accordion-head .button {
+    line-height: 1rem;
+    margin-bottom: 0px;
+}
+
+.accordion-head:hover .button-group {
+    display: block !important;
+}
+
+.accordion-head {
+    background: #efefef;
+    color: #222;
+    display: block;
+    font-family: "Helvetica Neue","Helvetica",Helvetica,Arial,sans-serif;
+    font-size: 1rem;
+    padding: 0.4rem;
+}
+
+.list-progress-item {
+    padding-left: 10px;
+    margin: 0px !important;
+}
+
+.list-progress-item h5 {
+    line-height: 37px;
+    font-size: 16px;
+    margin: 0px;
+}
+
+.list-progress-item h5 span.f32 {
+    margin-right: 5px;
+}
+
+.list-progress-item .progress {
+    margin-top: 5px;
+    margin-bottom: 0px;
+    background-color: #ddd;
+}
+
+.breadcrumbs li .f16 {
+    line-height: 16px;
+    vertical-align: top;
+    margin-right: 2px;
+}
+
+.project-view .side-nav {
+    padding-top: 0px;
 }
