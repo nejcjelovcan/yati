@@ -357,7 +357,7 @@ class Store(models.Model):
         self.logs.create(user=user, event='import', 
             data='Stores: %s'%(','.join(map(lambda s: str(s.id), stores))))
 
-    def update_po(self, pofile=False, user=None, data=None, overwrite='time'):
+    def update_po(self, pofile=False, user=None, data=None, overwrite='time', backup=True):
         """
         Update units in database with given pofile
         If no pofile passed, it will be taken from self.read()
@@ -374,8 +374,8 @@ class Store(models.Model):
 
         @TODO backup store before importing
         """
-        # backup, first (unless no units)
-        if self.units.all().exists():
+        # backup, first (unless no units or explicitly disabled)
+        if self.units.all().exists() and backup:
             self.write(fn=self.getFilename('backup_%s.po'%time.time()))
 
         # determine pofile (default [store_path]/[id]/import.po)
@@ -401,8 +401,8 @@ class Store(models.Model):
             try:
                 unit = self.units.get(msgid=Unit.pounit_get(pounit, 'source'))
                 if overwrite == 'time':
-                    if not self.lastExport or not unit.lastChange: update = True
-                    elif self.lastExport > unit.lastChange: update = True
+                    if not unit.lastChange: update = True
+                    elif self.lastExport and self.lastExport > unit.lastChange: update = True
                     elif unit.pounit_msgstr_equals(pounit): update = True
                 elif overwrite == 'never': update = False
             except Unit.DoesNotExist:
@@ -564,7 +564,8 @@ class Unit(models.Model):
 
     @property
     def lastChange(self):
-        try: self.logs.filter(type='change').order_by('-time')[0].time
+        try:
+            return self.logs.filter(event='change').order_by('-time')[0].time
         except IndexError: return None
 
     def __unicode__(self):
@@ -607,7 +608,7 @@ class Unit(models.Model):
     def pounit_msgstr_equals(self, pounit):
         target = Unit.pounit_get(pounit, 'target')
         if len(target) != len(self.msgstr): return False
-        for i in range(len(pounit.msgstr)):
+        for i in range(len(target)):
             if target[i] != self.msgstr[i]: return False
         return True
 
@@ -618,6 +619,7 @@ class Unit(models.Model):
         result = super(Unit, self).save(*args, **kwargs)
         if event:
             if type(event) in (list, tuple):
+                data = None
                 try: data = event[1]
                 except IndexError: pass
                 event = event[0]

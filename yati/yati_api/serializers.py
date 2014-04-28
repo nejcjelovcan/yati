@@ -21,7 +21,6 @@ class ArrayField(fields.CharField):
     widget = forms.Textarea
 
     def from_native(self, value):
-        print 'FROM_NATIVE', value
         if isinstance(value, six.string_types):
             return json.loads(value)
         elif not type(value) in (list, tuple):
@@ -122,6 +121,11 @@ class UnitWritableSerializer(UnitSerializer):
         fields = ('id', 'msgstr')
 
     msgstr = ArrayField()
+
+    def save_object(self, obj, **kwargs):
+        kwargs['event'] = ('change',)
+        kwargs['user'] = self.context.get('request').user
+        return super(UnitWritableSerializer, self).save_object(obj, **kwargs)
 
 class UnitTermSerializer(UnitSerializer):
     class Meta:

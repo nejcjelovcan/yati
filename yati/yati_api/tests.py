@@ -86,9 +86,12 @@ class ApiTest(TestCase):
 
         self.admin = User.objects.create_user(email='nejc@example.com', password='test')
         self.admin.is_staff = True
+        self.admin.is_active = True
         self.admin.save()
 
         self.user = User.objects.create_user(email='stefka@example.com', password='test')
+        self.user.is_active = True
+        self.user.save()
 
         self.client = Client()
 
@@ -110,6 +113,75 @@ class ApiTest(TestCase):
 
         response = self._jsonGet('/yati/projects/')
         self.assertEqual(response.get('count'), 1)
+
+    def tearDown(self):
+        Project.objects.all().delete()
+        Store.objects.all().delete()
+        Unit.objects.all().delete()
+        User.objects.all().delete()
+
+
+class LoggingTest(TestCase):
+
+    def _jsonGet(self, *args, **kwargs):
+        return json.loads(self.client.get(*args, **kwargs).content)
+
+    def _jsonPut(self, url, data):
+        return json.loads(self.client.put(url, json.dumps(data), content_type="application/json").content)
+
+    def setUp(self):
+        self.project = Project.objects.create(name='Test')
+        self.project2 = Project.objects.create(name='Test 2')
+        self.store = self.project.stores.create(filename='test.po', targetlanguage='sl')
+        self.importfile = os.path.join(PATH, 'testmedia/test.sl.po')
+        self.importfile2 = os.path.join(PATH, 'testmedia/test2.sl.po')
+
+        self.admin = User.objects.create_user(email='nejc@example.com', password='test')
+        self.admin.is_staff = True
+        self.admin.is_active = True
+        self.admin.save()
+
+        self.client = Client()
+
+    def testImportExportChange(self):
+        self.store.update(self.importfile)
+
+        # check import log
+        self.assertItemsEqual(self.store.logs.values_list('event', flat=True), [u'import'])
+
+        # change unit
+        self.client.login(email='nejc@example.com', password='test')
+        unit = self.store.units.all().exclude_header()[0]
+        response = self._jsonPut('/yati/units/%s/'%unit.id, dict(msgstr=['New text']))
+        unit = Unit.objects.get(id=unit.id)
+        self.assertEqual(unit.msgstr[0], 'New text')
+
+        # check user-changed unit logs
+        self.assertItemsEqual(unit.logs.all().order_by('-time').values('event', 'user'),
+            [dict(event='change', user=self.admin.id), dict(event='import_new', user=None)])
+
+        # check non-changed unit logs
+        unit4 = self.store.units.all().exclude_header()[4]
+        self.assertItemsEqual(unit4.logs.all().order_by('-time').values('event', 'user'),
+            [dict(event='import_new', user=None)])
+
+        # import file again
+        self.store.update(self.importfile2, backup=False)
+
+        # translation was left alone since 
+        unit = Unit.objects.get(id=unit.id)
+        self.assertEqual(unit.msgstr[0], 'New text')
+        self.assertItemsEqual(unit.logs.all().order_by('-time').values('event', 'user'),
+            [dict(event='change', user=self.admin.id), dict(event='import_new', user=None)])
+
+        unit4 = Unit.objects.get(id=unit4.id)
+        self.assertEqual(unit4.msgstr[0], 'TESTING CHANGED TRANSLATION')
+        self.assertItemsEqual(unit4.logs.all().order_by('-time').values('event', 'user'),
+            [dict(event='import', user=None), dict(event='import_new', user=None)])
+
+        # @TODO check pofile headers for time changes ?
+        # @TODO test other import modes ('always' and 'never')
+        # @TODO export and then import again!
 
     def tearDown(self):
         Project.objects.all().delete()
