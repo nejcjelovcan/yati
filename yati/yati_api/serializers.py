@@ -6,7 +6,7 @@ from django.utils.translation import ugettext as _
 
 from rest_framework import serializers, fields, six
 
-from models import Project, Store, Unit, Location, Module, User
+from models import Project, Store, Unit, Location, Module, User, get_user_project_permissions
 
 class ArrayField(fields.CharField):
     """
@@ -29,8 +29,9 @@ class ArrayField(fields.CharField):
         return value
 
 class UnitSetCounts(object):
-    def get_count(self, model):
-        lang = self.context.get('request').GET.get('language')
+    def get_count(self, model, lang=None):
+        if not lang:
+            lang = self.context.get('request').GET.get('language')
         units = model.units
         if lang:
             units = units.by_language(target=lang)
@@ -47,15 +48,21 @@ class ModuleSerializer(serializers.ModelSerializer, UnitSetCounts):
 class ProjectSerializer(serializers.ModelSerializer, UnitSetCounts):
     class Meta:
         model = Project
-        fields = ('id', 'name', 'modules', 'units_count', 'targetlanguages')
+        fields = ('id', 'name', 'modules', 'units_count', 'targetlanguages', 'users', 'project_permissions')
 
     #modules = ModuleSerializer(many=True)
     modules = serializers.SerializerMethodField('get_modules')
     units_count = serializers.SerializerMethodField('get_count')
     targetlanguages = serializers.SerializerMethodField('get_targetlanguages')
+    users = serializers.SerializerMethodField('get_users')
+    project_permissions = serializers.SerializerMethodField('get_project_permissions')
 
     def get_targetlanguages(self, project):
-        return project.targetlanguages
+        user = self.context.get('request').user
+        langs = map(lambda l: dict(id=l, units_count=self.get_count(project, l)), project.targetlanguages)
+        if len(user.get_languages()):
+            langs = filter(lambda l: l['id'] in user.get_languages(), langs)
+        return langs
 
     def get_modules(self, project):
         user = self.context.get('request').user
@@ -65,6 +72,16 @@ class ProjectSerializer(serializers.ModelSerializer, UnitSetCounts):
         else:
             qs = qs.get_for_user(user)
         return ModuleSerializer(qs, context=self.context, many=True).data
+
+    def get_users(self, project):
+        user = self.context.get('request').user
+        if user and (user.is_staff or user.has_perm('change_project')):
+            from guardian.shortcuts import get_users_with_perms
+            return UserSerializer(get_users_with_perms(project).filter(is_staff=False), context=dict(project=project), many=True).data
+        return []
+
+    def get_project_permissions(self, project):
+        return get_user_project_permissions(self.context.get('request').user, project)
 
 # class StoreSerializer(serializers.ModelSerializer):
 #     class Meta:
@@ -132,13 +149,14 @@ class LanguageSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'email', 'is_staff', 'languages', 'permissions')
+        fields = ('id', 'email', 'is_staff', 'languages', 'permissions', 'project_permissions')
 
     languages = serializers.SerializerMethodField('get_languages')
     permissions = serializers.SerializerMethodField('get_permissions')
+    project_permissions = serializers.SerializerMethodField('get_project_permissions')
 
     def get_languages(self, user):
-        return user.get_languages()
+        return map(lambda l: dict(id=l), user.get_languages())
 
     def get_permissions(self, user):
         permissions = []
@@ -146,3 +164,8 @@ class UserSerializer(serializers.ModelSerializer):
             if user.is_admin or user.has_perm(perm):
                 permissions.append(perm)
         return permissions
+
+    def get_project_permissions(self, user):
+        prj = self.context.get('project')
+        if prj:
+            return get_user_project_permissions(user, prj)

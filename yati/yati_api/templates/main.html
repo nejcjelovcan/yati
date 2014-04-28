@@ -6,6 +6,7 @@
 
     <meta name="viewport" content="width=1040, minimum-scale=0.1, maximum-scale=1.0" />
 
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/fontawesome/4.0.3/css/font-awesome.min.css" type="text/css" media="screen" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/foundation/5.2.1/css/foundation.min.css" type="text/css" media="screen" />
     <link rel="stylesheet" href="{% static "yati/css/yati.css" %}" type="text/css" media="screen" />
     <link rel="stylesheet" href="{% static "yati/css/flags32.css" %}" type="text/css" media="screen" />
@@ -17,6 +18,7 @@
     <script src="https://cdn.jsdelivr.net/modernizr/2.7.1/modernizr.min.js"></script>
     <script src="https://cdn.jsdelivr.net/foundation/5.2.1/js/foundation/foundation.js"></script>
     <script src="https://cdn.jsdelivr.net/foundation/5.2.1/js/foundation/foundation.topbar.js"></script>
+    <script src="https://cdn.jsdelivr.net/foundation/5.2.1/js/foundation/foundation.dropdown.js"></script>
 
     {% if not user.is_anonymous %}
       <script>
@@ -48,6 +50,7 @@
       <script type="text/x-jquery-tmpl" id="unit-view">{% include "tpl/unit-view.tpl" %}</script>    
       <script type="text/x-jquery-tmpl" id="language-view">{% include "tpl/language-view.tpl" %}</script>
       <script type="text/x-jquery-tmpl" id="terms-view">{% include "tpl/terms-view.tpl" %}</script>
+      <script type="text/x-jquery-tmpl" id="language-selector">{% include "tpl/language-selector.tpl" %}</script>
     {% else %}
       <br/>
       <div class="row">

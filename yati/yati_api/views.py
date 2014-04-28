@@ -127,9 +127,12 @@ def main(request):
             return redirect(reverse('yati-main'))
         else: data['login_form'] = form
     else:
+        context = dict(request=request)
         data['static_data'] = json.dumps(dict(
-            languages = serializers.LanguageSerializer(LanguageQueryset(), many=True).data,
-            user = serializers.UserSerializer(request.user).data
+            languages = serializers.LanguageSerializer(LanguageQueryset(), context=context, many=True).data,
+            user = serializers.UserSerializer(request.user, context=context).data
+            # projects = serializers.ProjectSerializer(Project.objects.all().get_for_user(request.user).distinct('id'), context=context, many=True).data
+            # @TODO ^^ see App model on the front end
         ))
 
     return render_to_response('main.html', data, context_instance=RequestContext(request))

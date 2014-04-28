@@ -90,6 +90,12 @@ def q_by_languages(target=None, source=None, prefix='store__'):
     q = q & q1 if q and q1 else (q1 or q)
     return q
 
+def get_user_project_permissions(user, project):
+    if not user: return []
+    if user.is_staff: return ['change_project', 'contribute_project', 'remove_project']
+    from guardian.shortcuts import get_perms
+    return get_perms(user, project)
+
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None):
         if not email:
@@ -191,9 +197,11 @@ class Project(models.Model):
         return u'"%s"'%self.name
 
     def get_orphan_units(self):
+        "@TODO test with multiple projects and modules"
         return self.get_orphan(Unit).order_by('store', 'msgid').distinct('store', 'msgid')
         
     def get_orphan_locations(self):
+        "@TODO test with multiple projects and modules"
         return self.get_orphan(Location).order_by('filename').distinct('filename').values_list('filename', flat=True)
 
     def get_orphan(self, model_cls, query=False):
@@ -469,9 +477,8 @@ class UnitQuerySet(models.query.QuerySet):
         Warning: this can return duplicate units
         use e.g. .order_by('id').distinct('id')
         """
-        q = None
         if module.pattern: q = Q(store__project=module.project, locations__filename__icontains=module.pattern)
-        else: q = module.project.get_orphan(Unit, query=True)   # @TODO get_orphan already has store__project in every OR
+        else: q = module.project.get_orphan(Unit, query=True) & Q(store__project=module.project)
         if exclude: q = ~q
         if query: return q
         return self.filter(q)

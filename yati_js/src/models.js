@@ -59,7 +59,9 @@
         urlRoot: urlRoot+'projects/',
         defaults: {
             name: 'Project',
-            modules: []
+            modules: [],
+            targetlanguages: [],
+            users: []
         },
         relations: [
             {
@@ -67,10 +69,22 @@
                 key: 'modules',
                 relatedModel: 'yati.models.Module',
                 collectionType: 'yati.models.Modules'
+            },
+            {
+                type: Backbone.Many,
+                key: 'targetlanguages',
+                relatedModel: 'yati.models.Language',
+                collectionType: 'yati.models.Languages'
+            },
+            {
+                type: Backbone.Many,
+                key: 'users',
+                relatedModel: 'yati.models.User',
+                collectionType: 'yati.models.Users'
             }
         ],
         getLanguagesForUser: function (user) {
-            return _(this.get('targetlanguages')).filter(user.hasLanguage);
+            return this.get('targetlanguages').chain().map(function (l) { return l.get('id'); }).filter(user.hasLanguage).value();
         }
     }).extend(UnitSet));
 
@@ -79,13 +93,13 @@
         model: yati.models.Project
     });
 
-    yati.models.Language = barebone.Model.extend({
+    yati.models.Language = barebone.Model.extend(_({
         defaults: {
             id: null,
             display: null,
             country: null
         }
-    });
+    }).extend(UnitSet));
 
     yati.models.Languages = barebone.Collection.extend({
         urlRoot: urlRoot+'languages/',
@@ -113,28 +127,29 @@
         model: yati.models.Module
     });
 
+    var changeUpdater = function (model, eventName) {
+        var cb = function () {
+            model.off(eventName, cb);
+            model.save(null, {
+                success: function (){
+                    model.on(eventName, cb);
+                }
+            });
+        };
+        model.on(eventName, cb);
+    };
+
     yati.models.Unit = barebone.Model.extend({
         urlRoot: urlRoot+'units/',
         defaults: {
-        },/*,
-        relations: [
-            {
-                type: Backbone.Many,
-                key: 'msgid_plural',
-                relatedModel: 'yati.models.String',
-                collectionType: 'yati.models.Strings'
-            },
-            {
-                type: Backbone.Many,
-                key: 'msgstr_plural',
-                relatedModel: 'yati.models.String',
-                collectionType: 'yati.models.Strings'
-            }
-        ],*/
+        },
         initialize: function () {
             // @TODO this is fucked up
             // maybe forget the listener until save is done?
-            this.once('change:msgstr', function () { this.save(); }, this);
+            var update = function () {
+
+            };
+            changeUpdater(this, 'change:msgstr');
         },
         isPlural: function () {
             return !!(this.get('msgid_plural')||[]).length;
@@ -173,6 +188,14 @@
             permissions: [],
             email: null
         },
+        relations: [
+            {
+                type: Backbone.Many,
+                key: 'languages',
+                relatedModel: 'yati.models.Language',
+                collectionType: 'yati.models.Languages'
+            }
+        ],
         initialize: function () {
             _(this).bindAll('hasLanguage', 'can');
         },
@@ -181,8 +204,8 @@
         },
         hasLanguage: function (lang) {
             return this.get('is_staff') ||
-                !this.get('languages').length || 
-                this.get('languages').indexOf(lang) > -1;
+                !this.get('languages').length ||
+                !!this.get('languages').get(lang);
         }
     });
 

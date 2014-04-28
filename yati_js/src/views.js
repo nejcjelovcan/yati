@@ -41,34 +41,54 @@
         }
     });
 
-    /*yati.views.LanguageView = kb.ViewModel.extend({
+    yati.views.LanguageView = kb.ViewModel.extend({
         constructor: function (model) {
             kb.ViewModel.prototype.constructor.call(this, model,
-                ['id', 'display', 'country']);
+                ['id', 'units_count']);
             this.model = model;
+
+            this.country = ko.computed(function () {
+                var lang = yati.app.get('languages').get(this.id());
+                if (lang) return lang.get('country');
+                return this.id();
+            }, this);
+
+            this.display = ko.computed(function () {
+                var lang = yati.app.get('languages').get(this.id());
+                if (lang) return lang.get('display');
+                return this.id();
+            }, this);
+
+            initUnitSet.call(this, model);
         }
-    });*/
+    });
 
     yati.views.ProjectView = kb.ViewModel.extend({
         constructor: function (model) {
             kb.ViewModel.prototype.constructor.call(this, model, {
-                keys: ['id', 'name', 'modules', 'units_count'],
+                keys: ['id', 'name', 'modules', 'units_count', 'targetlanguages', 'users'],
                 factories: {
-                    modules: collectionFactory(yati.views.ModuleView)
+                    modules: collectionFactory(yati.views.ModuleView),
+                    targetlanguages: collectionFactory(yati.views.LanguageView),
+                    users: collectionFactory(yati.views.UserView)
                 }
             });
 
-            this.targetlanguages = ko.computed(function () {
+            this.canChange = ko.computed(function () {
+                return (this.model().get('project_permissions')||[]).indexOf('change_project') > -1;
+            }, this);
+
+            /*this.targetlanguages = ko.computed(function () {
                 // @TODO subset languages colletion??
                 // @TODO this observable needs dependencies (when langauges will be added)
                 // @TODO unsafe if language not found in languages collection
                 return _(this.model().getLanguagesForUser(yati.app.get('user')))
                     .map(function (l) {
-                        var lang = yati.app.get('languages').get(l);
-                        return {id: l, display: lang ? lang.get('display') : l, country: lang.get('country') };
+                        var lang = yati.app.get('languages').get(l.get('id'));
+                        return {id: l.get('id'), display: lang ? lang.get('display') : l.get('id'), country: lang.get('country'), units_count: l.get('units_count')};
                     });
 
-            }, this);
+            }, this);*/
 
             initUnitSet.call(this, model);
         }
@@ -173,7 +193,10 @@
     yati.views.UserView = kb.ViewModel.extend({
         constructor: function (model) {
             kb.ViewModel.prototype.constructor.call(this, model, {
-                keys: ['email']
+                keys: ['id', 'email'],
+                factories: {
+                    languages: collectionFactory(yati.views.LanguageView)
+                }
             });
         }
     });

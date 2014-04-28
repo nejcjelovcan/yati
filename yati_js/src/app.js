@@ -18,8 +18,10 @@
             this.route('', 'index');
             this.route(':project_id/', 'project');
             //this.route(':project_id/add/', 'sourceAdd');
-            this.route(':project_id/:language/', 'language');
-            this.route(':project_id/:language/:module_id(/)(:filter)(/)(:page)(/)', 'module');
+            this.route(':project_id/users/', 'project_users');
+            this.route(':project_id/users/:user/:action', 'project_users_action');
+            this.route(':project_id/lang/:language/', 'language');
+            this.route(':project_id/lang/:language/:module_id(/)(:filter)(/)(:page)(/)', 'module');
         },
         index: afterInit(function () {
             if (yati.app.get('projects').length == 1) {
@@ -44,18 +46,37 @@
                 }
             }
         },
+        _getProjectUser: function (project_id, user_id) {
+            var prj = this._getProject(project_id),
+                user = prj.get('users').get(user_id);
+            if (!user) {
+                this.navigate(this.link('project_users', project_id), {trigger: true})
+            }
+            return [prj, user];
+        },
         project: afterInit(function (project_id) {
-            console.log('project', project_id);
             var prj = this._getProject(project_id);
             if (prj) {
                 //if (prj.get('targetlanguages'))
                 // @TODO check which languages are present and which user has
                 var langs = prj.getLanguagesForUser(yati.app.get('user'));
-                if (langs.length == 1) {
+                if (langs.length == 1 && !yati.app.get('user').get('is_staff')) {
                     this.navigate(this.link('language', project_id, langs[0]), {trigger: true});
                     return;
                 }
                 yati.app.set({view: 'project', project: prj});
+            }
+        }),
+        project_users: afterInit(function (project_id) {
+            var prj = this._getProject(project_id);
+            if (prj) {
+                yati.app.set({view: 'project_users', project: prj});
+            }
+        }),
+        project_users_action: afterInit(function (project_id, user_id, action) {
+            var prjuser = this._getProjectUser(project_id, user_id);
+            if (prjuser) {
+                yati.app.set({view: 'project_users_' + action, project: prj, selected_user: user});
             }
         }),
         /*sourceAdd: afterInit(function (project_id) {
@@ -65,13 +86,11 @@
             }
         }),*/
         language: afterInit(function (project_id, language) {
-            console.log('language', project_id, language);
             var prjlang = this._getProjectLanguage(project_id, language);
             if (prjlang) {
                 // check if only one module, redirect there
-                if (prjlang[0].get('modules').length === 1) {
-                    console.log('HAPPENS HERE', project_id+'/'+language+'/'+prjlang[0].get('modules').first().get('id')+'/');
-                    this.navigate(project_id+'/'+language+'/'+prjlang[0].get('modules').first().get('id')+'/',
+                if (prjlang[0].get('modules').length === 1 && !yati.app.get('user').get('is_staff')) {
+                    this.navigate(this.link('module', project_id, language, prjlang[0].get('modules').first().get('id')),
                         {trigger: true, replace: true});
                     return;
                 }
@@ -79,15 +98,12 @@
             }
         }),
         module: afterInit(function (project_id, language, module_id, filter, page) {
-            console.log('module', project_id, language, module_id);
             var prjlang = this._getProjectLanguage(project_id, language);
             if (prjlang) {
                 var mod = prjlang[0].get('modules').get(module_id),
                     unitParams = {page: parseInt(page, 10)||1, filter: filter||'all', pageSize: 10};
-                console.log({view: 'module', project: prjlang[0], language: prjlang[1],
-                    module: mod, unitParams: unitParams});
                 if (!mod) {
-                    this.navigate(project_id+'/'+language+'/', {trigger: true});
+                    this.navigate(this.link('language', project_id, language), {trigger: true});
                     return;
                 }
                 yati.app.set({view: 'module', project: prjlang[0], language: prjlang[1],
@@ -103,8 +119,12 @@
             switch(view) {
                 case 'project':
                     return '/' + (args[0]||(yati.app.get('project').get('id'))) + '/';
+                case 'project_users':
+                    return this.link('project', args[0]) + 'users/';
+                case 'project_users_action':
+                    return this.link('project_users', args[0]) + args[1] + '/' + args[2] + '/';
                 case 'language':
-                    return this.link('project', args[0]) + (args[1]||(lang && lang.get('id'))) + '/';
+                    return this.link('project', args[0]) + 'lang/' + (args[1]||(lang && lang.get('id'))) + '/';
                 case 'module':
                     return this.link('language', args[0], args[1])
                         + (args[2]||(mod && mod.get('id'))) + '/' + (args[3]||'all') + '/' + (args[4]||1) + '/';
@@ -126,6 +146,7 @@
             view: 'index',
             unitParams: { filter: 'all' },
             user: null,
+            selected_user: null,
             terms: []
         },
         relations: [
@@ -166,6 +187,11 @@
                 type: Backbone.One,
                 key: 'user',
                 relatedModel: 'yati.models.User'
+            },
+            {
+                type: Backbone.One,
+                key: 'selected_user',
+                relatedModel: 'yati.models.User'
             }
         ],
         initialize: function (attrs, options) {
@@ -179,13 +205,15 @@
             } else {
                 // @TODO now what?
             }
-            this.get('projects').fetch();
+            /*if (staticData.projects) { @TODO Y U NO WORK?
+                this.get('projects').reset(staticData.projects);
+            } else {*/
+                this.get('projects').fetch();
+            //}
+
             this.on('change:module', this.on_module_changed);
             this.on('change:unitParams', this.on_module_changed);
             this.on('change:language', this.on_language_changed);
-            this.on('change:view', function () {
-                console.log('VIEW CHANGED', yati.app.get('view'));
-            });
         },
         on_module_changed: function () {
             this.get('module').get('units').setQueryParams(_({
@@ -194,6 +222,7 @@
             }).extend(this.get('unitParams')));
         },
         on_language_changed: function () {
+            //this.get('project').get('modules').setQueryParams({language: this.get('language').get('id')});
             this.get('projects').setQueryParams({language: this.get('language').get('id')});
         },
         set_term_unit: function (unit) {

@@ -79,6 +79,10 @@ textarea {
     display: block !important;
 }
 
+.accordion-head:hover .button-group.hide {
+    display: none !important;
+}
+
 .accordion-head {
     background: #efefef;
     color: #222;
@@ -117,4 +121,38 @@ textarea {
 
 .project-view .side-nav {
     padding-top: 0px;
+}
+
+.units-table tr {
+    cursor: pointer;
+}
+
+.units-table tr:hover {
+    background-color: #EEE;
+}
+
+.units-table td {
+    position: relative;
+}
+
+.units-table .fa {
+    position: absolute;
+    right: 5px;
+    top: 7px;
+    padding: 3px;
+    color: #999;
+    background-color: #EEE;
+    display: none;
+}
+
+.units-table tr:hover .fa {
+    display: inline-block;
+}
+
+.units-table tr:hover td.edit .fa {
+    display: none !important;
+}
+
+.button .fa {
+    margin-right: 5px;
 }
