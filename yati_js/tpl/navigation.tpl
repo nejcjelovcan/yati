@@ -8,9 +8,13 @@
   <section class="top-bar-section">
     <ul class="right">
       {% if not user.is_anonymous %}
-        <li><a href="/">{{ user.email }}</a></li>
+        <li class="has-dropdown">
+          <a href="/">{{ user.email }}</a>
+          <ul class="dropdown">
+            <li><a href="/logout/" class="link-raw">Logout</a></li>
+          </ul>
+        </li>
         <li class="divider"></li>
-        <li><a href="/logout/" class="link-raw">Logout</a></li>
       {% endif %}
     </ul>
   </section>

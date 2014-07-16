@@ -20,6 +20,7 @@
             //this.route(':project_id/add/', 'sourceAdd');
             this.route(':project_id/users/', 'project_users');
             this.route(':project_id/users/:user/:action', 'project_users_action');
+            this.route(':project_id/usersadd/', 'project_users_add');
             this.route(':project_id/lang/:language/', 'language');
             this.route(':project_id/lang/:language/:module_id(/)(:filter)(/)(:page)(/)', 'module');
         },
@@ -73,6 +74,14 @@
                 yati.app.set({view: 'project_users', project: prj});
             }
         }),
+        project_users_add: afterInit(function (project_id) {
+            var prj = this._getProject(project_id);
+            if (prj) {
+                //prj.set('invite_user', new yati.models.User);
+                //console.log('NEW USER', prj.get('invite_user').attributes);
+                yati.app.set({view: 'project_users_add', project: prj});
+            }
+        }),
         project_users_action: afterInit(function (project_id, user_id, action) {
             var prjuser = this._getProjectUser(project_id, user_id);
             if (prjuser) {
@@ -121,6 +130,8 @@
                     return '/' + (args[0]||(yati.app.get('project').get('id'))) + '/';
                 case 'project_users':
                     return this.link('project', args[0]) + 'users/';
+                case 'project_users_add':
+                    return this.link('project', args[0]) + 'usersadd/';
                 case 'project_users_action':
                     return this.link('project_users', args[0]) + args[1] + '/' + args[2] + '/';
                 case 'language':
@@ -131,6 +142,9 @@
                 default:
                     return '/';
             }
+        },
+        link_invite: function (token) {
+            return document.location.origin + '/invite/' + token + '/';
         }
     }));
 

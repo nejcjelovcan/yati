@@ -17,36 +17,7 @@
             }
         };
 
-    // @TODO move to util.js
-    yati.util = {
-        // this replaces many spaces at beginning/end with only one visible placeholder
-        // @TODO put in as many placeholders as spaces
-        // @TODO render trailing newline as &#9166;
-        _entityMap: {
-            "&": "&amp;",
-            "<": "&lt;",
-            ">": "&gt;",
-            '"': '&quot;',
-            "'": '&#39;',
-            "/": '&#x2F;'
-        },
-        escapeHtml: function (str) {
-            return String(str).replace(/[&<>"'\/]/g, function (s) {
-                return yati.util._entityMap[s];
-            });
-        },
-        highlightTrim: function (str) {
-            return (str||'').replace(/^[ ]+/, '&#9251;')
-                .replace(/[ ]+$/, '&#9251;');
-        },
-        // html-ize tabs and newlines
-        htmlize: function (str) {
-            return str.replace('\t', '&nbsp;&nbsp;&nbsp;&nbsp;').replace(/\n/g, '<br/>');
-        },
-        prepareString: function (str) {
-            return yati.util.htmlize(yati.util.highlightTrim(yati.util.escapeHtml(str)));
-        }
-    };
+    
 
     yati.models.User = barebone.Model.extend({
         defaults: { permissions: [] },
@@ -61,7 +32,8 @@
             name: 'Project',
             modules: [],
             targetlanguages: [],
-            users: []
+            users: [],
+            invite_user: {}
         },
         relations: [
             {
@@ -81,6 +53,11 @@
                 key: 'users',
                 relatedModel: 'yati.models.User',
                 collectionType: 'yati.models.Users'
+            },
+            {
+                type: Backbone.One,
+                key: 'invite_user',
+                relatedModel: 'yati.models.User'
             }
         ],
         getLanguagesForUser: function (user) {
@@ -182,6 +159,7 @@
     });
 
     yati.models.User = barebone.Model.extend({
+        urlRoot: urlRoot+'users/',
         defaults: {
             is_staff: false,
             languages: [],
@@ -206,7 +184,19 @@
             return this.get('is_staff') ||
                 !this.get('languages').length ||
                 !!this.get('languages').get(lang);
+        },
+        invite: function (project_id, options) {
+            if (this.get('id')) throw Error('User already invited');
+            return this.sync('create', this, _({
+                data: JSON.stringify({
+                    project_id: project_id,
+                    email: this.get('email'),
+                    language: this.get('language')
+                }),
+                contentType: 'application/json',
+            }).extend(options));
         }
     });
+
 
 }(window.yati, window.Backbone, window.barebone));

@@ -73,11 +73,14 @@ from django.conf import settings
 from django.utils.translation import ugettext as _
 from django.contrib.auth.models import User
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
+from django.core.validators import validate_email
 
 from settings import get_setting
 
 class YatiException(Exception):
     pass
+
+LANGUAGES = dict(sorted(settings.LANGUAGES, key=lambda x: x[1]))
 
 def q_by_languages(target=None, source=None, prefix='store__'):
     assert target or source, "Specify target our source language"
@@ -129,7 +132,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     (unless languages==null or user.is_staff==true)
     """
 
-    email = models.EmailField('email address', unique=True)
+    email = models.EmailField('email address', unique=True, validators=[validate_email])
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
     languages = models.CharField(default=None, null=True, max_length=255)
@@ -191,6 +194,8 @@ class Project(models.Model):
     class Meta:
         permissions = (
             ('contribute_project', 'Can contribute translations to a project'),
+            #('change_project', 'Can change project (invite users, languages, see logs)'),
+            # ^^ change project is already automatically a permission (as is delete_project and create_project ???? - not sure)
         )
 
     def __unicode__(self):
@@ -729,3 +734,24 @@ class Module(models.Model):
 
     def __unicode__(self):
         return u'%s: %s (%s)'%(self.project.name, self.name, self.pattern)
+
+
+def random_string(size=32):
+    import random, string
+    return ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(size))
+
+class TokenManager(models.Manager):
+    def create_token(self, user, type='invite'):
+        return Token.objects.create(user=user, type=type, hash=random_string())
+
+TOKEN_TYPES = (
+    ('invite', 'Invite token'),
+)
+
+class Token(models.Model):
+    user = models.ForeignKey(User, related_name='tokens')
+    hash = models.CharField(max_length=255)
+    type = models.CharField(choices=TOKEN_TYPES, max_length=20)
+    valid = models.BooleanField(default=True)
+
+    objects = TokenManager()

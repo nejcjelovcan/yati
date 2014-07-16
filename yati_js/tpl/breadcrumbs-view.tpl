@@ -14,6 +14,9 @@
       <li data-bind="css: {hide: view() != 'project_users', current: view() == 'project_users'}">
         <a data-bind="attr: {href: yati.router.link('project_users', project().id(), language().id())}">Users</a>
       </li>
+      <li data-bind="css: {hide: view() != 'project_users_add', current: view() == 'project_users_add'}">
+        <a data-bind="attr: {href: yati.router.link('project_users_add', project().id())}">Add user</a>
+      </li>
       <li data-bind="css: {hide: view() != 'module', current: view() == 'module'}">
         <a data-bind="text: module().name(), attr: {href: yati.router.link('module', project().id(), language().id(), module().id())}"></a>
       </li>

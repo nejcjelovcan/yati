@@ -6,7 +6,8 @@ from django.utils.translation import ugettext as _
 
 from rest_framework import serializers, fields, six
 
-from models import Project, Store, Unit, Location, Module, User, get_user_project_permissions
+from models import Project, Store, Unit, Location, Module, User, Token, StoreLog,\
+    UnitLog, get_user_project_permissions, LANGUAGES, STORE_LOG_EVENTS, UNIT_LOG_EVENTS
 
 class ArrayField(fields.CharField):
     """
@@ -153,14 +154,15 @@ class LanguageSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'email', 'is_staff', 'languages', 'permissions', 'project_permissions')
+        fields = ('id', 'email', 'is_staff', 'is_active', 'last_login', 'languages', 'permissions', 'project_permissions', 'invite_token')
 
     languages = serializers.SerializerMethodField('get_languages')
     permissions = serializers.SerializerMethodField('get_permissions')
     project_permissions = serializers.SerializerMethodField('get_project_permissions')
+    invite_token = serializers.SerializerMethodField('get_invite_token')
 
     def get_languages(self, user):
-        return map(lambda l: dict(id=l), user.get_languages())
+        return map(lambda l: dict(id=l, display=LANGUAGES[l]), user.get_languages())
 
     def get_permissions(self, user):
         permissions = []
@@ -173,3 +175,38 @@ class UserSerializer(serializers.ModelSerializer):
         prj = self.context.get('project')
         if prj:
             return get_user_project_permissions(user, prj)
+
+    def get_invite_token(self, user):
+        try: return Token.objects.filter(user=user, type='invite', valid=True)[0].hash
+        except IndexError: return None
+
+class UserMinimalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('email',)
+
+
+STORE_LOG_EVENTS = dict(STORE_LOG_EVENTS)
+UNIT_LOG_EVENTS = dict(UNIT_LOG_EVENTS)
+
+class StoreLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StoreLog
+        fields = ('time', 'data', 'user', 'store', 'event')
+
+    def get_event_name(self, log):
+        return STORE_LOG_EVENTS[log.event]
+
+    user = UserMinimalSerializer()
+    event = serializers.SerializerMethodField('get_event_name')
+
+class UnitLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UnitLog
+        fields = ('time', 'data', 'user', 'unit', 'event')
+
+    def get_event_name(self, log):
+        return UNIT_LOG_EVENTS[log.event]
+
+    user = UserMinimalSerializer()
+    event = serializers.SerializerMethodField('get_event_name')

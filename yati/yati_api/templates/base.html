@@ -1,0 +1,31 @@
+{% load i18n %}{% load static %}<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{% block title %}Viidea localize{% endblock %}</title>
+
+    <meta name="viewport" content="width=1040, minimum-scale=0.1, maximum-scale=1.0" />
+
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/fontawesome/4.0.3/css/font-awesome.min.css" type="text/css" media="screen" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/foundation/5.2.1/css/foundation.min.css" type="text/css" media="screen" />
+    <link rel="stylesheet" href="{% static "yati/css/yati.css" %}" type="text/css" media="screen" />
+    <link rel="stylesheet" href="{% static "yati/css/flags32.css" %}" type="text/css" media="screen" />
+    <link rel="stylesheet" href="{% static "yati/css/flags16.css" %}" type="text/css" media="screen" />
+
+    <script src="https://cdn.jsdelivr.net/jquery/1.8.3/jquery-1.8.3.min.js"></script>
+    <script src="{% static "yati/js/jquery.autosize.min.js" %}"></script>
+    
+    <script src="https://cdn.jsdelivr.net/modernizr/2.7.1/modernizr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/foundation/5.2.1/js/foundation/foundation.js"></script>
+    <script src="https://cdn.jsdelivr.net/foundation/5.2.1/js/foundation/foundation.topbar.js"></script>
+    <script src="https://cdn.jsdelivr.net/foundation/5.2.1/js/foundation/foundation.dropdown.js"></script>
+
+    {% block head %}
+    {% endblock %}
+  </head>
+
+  <body>
+    {% block body %}
+    {% endblock %}
+  </body>
+</html>

@@ -77,6 +77,9 @@ class ApiTest(TestCase):
     def _jsonGet(self, *args, **kwargs):
         return json.loads(self.client.get(*args, **kwargs).content)
 
+    #def _jsonPost(self, *args, **kwargs):
+    #    return json.dumps(self.client.post(*args, **kwargs).content)
+
     def setUp(self):
         self.project = Project.objects.create(name='Test')
         self.project2 = Project.objects.create(name='Test 2')
@@ -113,6 +116,29 @@ class ApiTest(TestCase):
 
         response = self._jsonGet('/yati/projects/')
         self.assertEqual(response.get('count'), 1)
+
+    def testInviteUser(self):
+        self.client.login(email='nejc@example.com', password='test')
+
+        def post(data):
+            response = self.client.post('/yati/users/', data)
+            data = json.loads(response.content)
+            return response, data
+
+        response, data = post(dict())
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(data.get('email')[0], u'Enter a valid email address.')
+
+        response, data = post(dict(email='nejc@example.com'))
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(data.get('email')[0], u'User with this email already exists')
+
+        response, data = post(dict(email='someone@example.com', language='sl'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(not not data.get('invite_token'))
+
+        # try to login via invite
+        # @TODO
 
     def tearDown(self):
         Project.objects.all().delete()
@@ -182,6 +208,7 @@ class LoggingTest(TestCase):
         # @TODO check pofile headers for time changes ?
         # @TODO test other import modes ('always' and 'never')
         # @TODO export and then import again!
+
 
     def tearDown(self):
         Project.objects.all().delete()

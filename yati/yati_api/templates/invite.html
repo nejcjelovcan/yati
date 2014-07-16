@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% load i18n %}{% load static %}
+
+{% block title %}Viidea localize{% endblock %}
+
+{% block head %}
+  {% if not user.is_anonymous %}
+    <script>
+      window._yati_data = {{static_data|safe}};
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/underscorejs/1.5.2/underscore-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/backbonejs/1.1.2/backbone-min.js"></script>
+    <script src="{% static "yati/js/barebone-backbone.min.js" %}"></script>
+    <script src="https://cdn.jsdelivr.net/knockout/3.1.0/knockout.js"></script>
+    <script src="{% static "yati/js/knockback-core.min.js" %}"></script>
+    <script src="{% static "yati/js/knockback-triggering.min.js" %}"></script>
+
+    <script src="{% static "yati/js/core.js" %}"></script>
+    <script src="{% static "yati/js/models.js" %}"></script>
+    <script src="{% static "yati/js/views.js" %}"></script>
+    <script src="{% static "yati/js/app.js" %}"></script>
+  {% endif %}
+{% endblock %}
+
+{% block body %}
+  {% include "tpl/navigation.tpl" %}
+  <br/>
+  <div class="row">
+    <div class="small-10 medium-8 large-6 small-centered medium-centered large-centered columns">
+      <h3>Hello {{invite_user.email}}!</h3>
+      <p>Welcome to Viidea Localize!<br/>
+      Please fill the following form to finish registration.</p>
+      <form action="?" method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="submit" value="Enter" class="button radius small columns" />
+      </form>
+    </div>
+  </div>
+{% endblock %}

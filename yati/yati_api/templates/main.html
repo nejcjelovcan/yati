@@ -1,67 +1,52 @@
-{% load i18n %}{% load static %}<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>YATI</title>
+{% extends "base.html" %}{% load i18n %}{% load static %}
 
-    <meta name="viewport" content="width=1040, minimum-scale=0.1, maximum-scale=1.0" />
+{% block title %}Viidea localize{% endblock %}
 
-    <link rel="stylesheet" href="//cdn.jsdelivr.net/fontawesome/4.0.3/css/font-awesome.min.css" type="text/css" media="screen" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/foundation/5.2.1/css/foundation.min.css" type="text/css" media="screen" />
-    <link rel="stylesheet" href="{% static "yati/css/yati.css" %}" type="text/css" media="screen" />
-    <link rel="stylesheet" href="{% static "yati/css/flags32.css" %}" type="text/css" media="screen" />
-    <link rel="stylesheet" href="{% static "yati/css/flags16.css" %}" type="text/css" media="screen" />
+{% block head %}
+  {% if not user.is_anonymous %}
+    <script>
+      window._yati_data = {{static_data|safe}};
+    </script>
 
-    <script src="https://cdn.jsdelivr.net/jquery/1.8.3/jquery-1.8.3.min.js"></script>
-    <script src="{% static "yati/js/jquery.autosize.min.js" %}"></script>
-    
-    <script src="https://cdn.jsdelivr.net/modernizr/2.7.1/modernizr.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/foundation/5.2.1/js/foundation/foundation.js"></script>
-    <script src="https://cdn.jsdelivr.net/foundation/5.2.1/js/foundation/foundation.topbar.js"></script>
-    <script src="https://cdn.jsdelivr.net/foundation/5.2.1/js/foundation/foundation.dropdown.js"></script>
+    <script src="https://cdn.jsdelivr.net/underscorejs/1.5.2/underscore-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/backbonejs/1.1.2/backbone-min.js"></script>
+    <script src="{% static "yati/js/barebone-backbone.min.js" %}"></script>
+    <script src="https://cdn.jsdelivr.net/knockout/3.1.0/knockout.js"></script>
+    <script src="{% static "yati/js/knockback-core.min.js" %}"></script>
+    <script src="{% static "yati/js/knockback-triggering.min.js" %}"></script>
+    <script src="{% static "yati/js/moment.min.js" %}"></script>
 
-    {% if not user.is_anonymous %}
-      <script>
-        window._yati_data = {{static_data|safe}};
-      </script>
+    <script src="{% static "yati/js/core.js" %}"></script>
+    <script src="{% static "yati/js/util.js" %}"></script>
+    <script src="{% static "yati/js/models.js" %}"></script>
+    <script src="{% static "yati/js/views.js" %}"></script>
+    <script src="{% static "yati/js/app.js" %}"></script>
+  {% endif %}
+{% endblock %}
 
-      <script src="https://cdn.jsdelivr.net/underscorejs/1.5.2/underscore-min.js"></script>
-      <script src="https://cdn.jsdelivr.net/backbonejs/1.1.2/backbone-min.js"></script>
-      <script src="{% static "yati/js/barebone-backbone.min.js" %}"></script>
-      <script src="https://cdn.jsdelivr.net/knockout/3.1.0/knockout.js"></script>
-      <script src="{% static "yati/js/knockback-core.min.js" %}"></script>
-      <script src="{% static "yati/js/knockback-triggering.min.js" %}"></script>
-
-      <script src="{% static "yati/js/core.js" %}"></script>
-      <script src="{% static "yati/js/models.js" %}"></script>
-      <script src="{% static "yati/js/views.js" %}"></script>
-      <script src="{% static "yati/js/app.js" %}"></script>
-    {% endif %}
-  </head>
-
-  <body>
-    {% include "tpl/navigation.tpl" %}
-    {% if not user.is_anonymous %}
-      {% include "tpl/app-view.tpl" %}
-      <script type="text/x-jquery-tmpl" id="index-view">{% include "tpl/index-view.tpl" %}</script>
-      <script type="text/x-jquery-tmpl" id="breadcrumbs-view">{% include "tpl/breadcrumbs-view.tpl" %}</script>
-      <script type="text/x-jquery-tmpl" id="module-view">{% include "tpl/module-view.tpl" %}</script>    
-      <script type="text/x-jquery-tmpl" id="pagination-view">{% include "tpl/pagination-view.tpl" %}</script>    
-      <script type="text/x-jquery-tmpl" id="unit-view">{% include "tpl/unit-view.tpl" %}</script>    
-      <script type="text/x-jquery-tmpl" id="language-view">{% include "tpl/language-view.tpl" %}</script>
-      <script type="text/x-jquery-tmpl" id="terms-view">{% include "tpl/terms-view.tpl" %}</script>
-      <script type="text/x-jquery-tmpl" id="language-selector">{% include "tpl/language-selector.tpl" %}</script>
-    {% else %}
-      <br/>
-      <div class="row">
-        <div class="small-10 medium-6 large-4 small-centered medium-centered large-centered columns">
-          <form action="?" method="post">
-            {% csrf_token %}
-            {{ login_form.as_p }}
-            <input type="submit" value="Login" class="button radius small columns" />
-          </form>
-        </div>
+{% block body %}
+  {% include "tpl/navigation.tpl" %}
+  {% if not user.is_anonymous %}
+    {% include "tpl/app-view.tpl" %}
+    <script type="text/x-jquery-tmpl" id="index-view">{% include "tpl/index-view.tpl" %}</script>
+    <script type="text/x-jquery-tmpl" id="breadcrumbs-view">{% include "tpl/breadcrumbs-view.tpl" %}</script>
+    <script type="text/x-jquery-tmpl" id="module-view">{% include "tpl/module-view.tpl" %}</script>    
+    <script type="text/x-jquery-tmpl" id="pagination-view">{% include "tpl/pagination-view.tpl" %}</script>    
+    <script type="text/x-jquery-tmpl" id="unit-view">{% include "tpl/unit-view.tpl" %}</script>    
+    <script type="text/x-jquery-tmpl" id="language-view">{% include "tpl/language-view.tpl" %}</script>
+    <script type="text/x-jquery-tmpl" id="terms-view">{% include "tpl/terms-view.tpl" %}</script>
+    <script type="text/x-jquery-tmpl" id="language-selector">{% include "tpl/language-selector.tpl" %}</script>
+    <script type="text/x-jquery-tmpl" id="user-add">{% include "tpl/user-add.tpl" %}</script>
+  {% else %}
+    <br/>
+    <div class="row">
+      <div class="small-10 medium-6 large-4 small-centered medium-centered large-centered columns">
+        <form action="?" method="post">
+          {% csrf_token %}
+          {{ login_form.as_p }}
+          <input type="submit" value="Login" class="button radius small columns" />
+        </form>
       </div>
-    {% endif %}
-  </body>
-</html>
+    </div>
+  {% endif %}
+{% endblock %}

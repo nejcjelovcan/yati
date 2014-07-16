@@ -66,11 +66,12 @@
     yati.views.ProjectView = kb.ViewModel.extend({
         constructor: function (model) {
             kb.ViewModel.prototype.constructor.call(this, model, {
-                keys: ['id', 'name', 'modules', 'units_count', 'targetlanguages', 'users'],
+                keys: ['id', 'name', 'modules', 'units_count', 'targetlanguages', 'users', 'invite_user'],
                 factories: {
                     modules: collectionFactory(yati.views.ModuleView),
                     targetlanguages: collectionFactory(yati.views.LanguageView),
-                    users: collectionFactory(yati.views.UserView)
+                    users: collectionFactory(yati.views.UserView),
+                    invite_user: yati.views.UserFormView
                 }
             });
 
@@ -193,10 +194,44 @@
     yati.views.UserView = kb.ViewModel.extend({
         constructor: function (model) {
             kb.ViewModel.prototype.constructor.call(this, model, {
-                keys: ['id', 'email'],
+                keys: ['id', 'email', 'is_active', 'last_login', 'invite_token'],
                 factories: {
                     languages: collectionFactory(yati.views.LanguageView)
                 }
+            });
+        }
+    });
+
+    yati.views.UserFormView = kb.ViewModel.extend({
+        constructor: function (model) {
+            kb.ViewModel.prototype.constructor.call(this, model, {
+                keys: ['email', 'language']
+            });
+            _(this).bindAll('onSubmit');
+
+            this.submitting = ko.observable(false);
+            this.formError = ko.observable(null);
+            this.emailError = ko.observable(null);
+        },
+        onSubmit: function () {
+            var projectId = yati.app.get('project').get('id'),
+                that = this;
+            this.submitting(true);
+
+            this.model().invite(projectId).done(function (data) {
+                yati.app.get('project').get('users').add(data);
+                yati.router.navigate(yati.router.link('project_users', projectId), {trigger: true});
+            }).error(function (xhr) {
+                that.submitting(false);
+                var data = {},
+                    emailError;
+                try {
+                    data = JSON.parse(xhr.responseText);
+                    if (data.email && data.email[0]) {
+                        emailError = data.email[0];
+                    }
+                } catch (e) {}
+                emailError ? that.emailError(emailError) : that.formError('Something went wrong');
             });
         }
     });

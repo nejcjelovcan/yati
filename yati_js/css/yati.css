@@ -156,3 +156,15 @@ textarea {
 .button .fa {
     margin-right: 5px;
 }
+
+table {
+    border-width: 0px;
+}
+
+.hide {
+    display: none !important;   /* try class="error hide" to see why i did this */
+}
+
+td input {
+    margin: 0px !important;   
+}
