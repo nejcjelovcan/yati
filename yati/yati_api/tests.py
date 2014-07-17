@@ -6,9 +6,7 @@ from django.test import TestCase
 from django.test.client import Client
 from django.conf import settings
 
-from models import Project, Store, Unit, Location, Module, StoreLog, UnitLog, User
-
-#from vl.tests import _default_site, _get_user, _test_server, _create_lecture, TestClient, CLIENT_USERNAME, CLIENT_PASSWORD
+from models import Project, Store, Unit, Location, Module, StoreLog, UnitLog, User, Token
 
 PATH = os.path.dirname(os.path.realpath(__file__))
 
@@ -138,7 +136,19 @@ class ApiTest(TestCase):
         self.assertTrue(not not data.get('invite_token'))
 
         # try to login via invite
-        # @TODO
+        self.client.logout()
+        response = self.client.get('/invite/%s/'%data.get('invite_token'))
+        self.assertIn('Hello someone@example.com!', response.content)
+
+        response = self.client.post('/invite/%s/'%data.get('invite_token'), dict(new_password1='test', new_password2='test'))
+        self.assertEqual(response.status_code, 302)
+
+        user = User.objects.get(email='someone@example.com')
+        response = self.client.get('/')
+        self.assertEqual(response.context['user'], user)
+        self.assertEqual(user.is_active, True)
+        self.assertEqual(user.languages, 'sl,')
+        self.assertEqual(Token.objects.get(hash=data.get('invite_token')).valid, False)
 
     def tearDown(self):
         Project.objects.all().delete()
@@ -209,6 +219,38 @@ class LoggingTest(TestCase):
         # @TODO test other import modes ('always' and 'never')
         # @TODO export and then import again!
 
+    def testImportExportFlow(self):
+        from yati_api.util import add_stores_from_django_locale
+
+        # add project from django locale
+        localedir = os.path.join(PATH, 'testmedia/locale/')
+        project = add_stores_from_django_locale(localedir, project_name='Testproject', po_name='django')
+
+        # change some translations
+        store = project.stores.get(targetlanguage='sl')
+
+        unit = store.units.all()[10]
+        unit.msgstr = [u'Uporabnik je spremenil enoto']
+        unit.save(event='change', user=self.admin)
+
+        # change pofile (changed pofile (sl, unit 'Language') is in locale2 dir)
+        # update from pofile
+        slpofile = os.path.join(PATH, 'testmedia/locale2/sl/LC_MESSAGES/django.po')
+        store.update(store.read(slpofile))
+
+        # export to pofile
+        handle = StringIO.StringIO()
+        store.write(handle=handle)
+        handle.seek(0)
+
+        content = handle.read()
+        self.assertIn('Uporabnik je spremenil enoto', content)
+        self.assertIn('Jezik', content)
+
+        # @TODO also check update(overwrite=always|never) options to see if they work properly
+        #           (even though this is not default)
+
+        # @TODO test util update_project and export_project
 
     def tearDown(self):
         Project.objects.all().delete()

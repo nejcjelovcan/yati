@@ -41,6 +41,34 @@ def add_stores_from_django_locale(path, project_name=None, project=None, po_name
 
     return project
 
+def update_project(project, dry_run):
+    """
+    Takes projects' stores and tries to update them from store.filename (if exists)
+    Watch out, do dry_run before anything weird happens
+    """
+    print 'Updating project %s%s'%(project, ' DRY RUN' if dry_run else '')
+    for store in project.stores.all():
+        if os.path.exists(store.filename):
+            print 'For %s found file %s'%(store, store.filename)
+            if not dry_run:
+                store.update(store.read(store.filename))
+        else:
+            print 'For %s NO FILE FOUND %s'%(store, store.filename)
+
+def export_project(project, dry_run):
+    """
+    Takes projects' stores and tries to export them to store.filename
+    Watch out, do dry_run before anything weird happens
+    """
+    print 'Exporting project %s%s'%(project, ' DRY RUN' if dry_run else '')
+    for store in project.stores.all():
+        if not store.filename:
+            print '%s has no filename set, ignoring'%store
+        else:
+            print 'Exporting %s to file %s'%(store, store.filename)
+            if not dry_run:
+                store.write(store.filename)
+
 def europarl_make_pofile(sourcefn, targetfn, limit=None):
     """
     Make a pofile (pypo.pofile instance) out of two europarl text files

@@ -118,7 +118,7 @@ class UserViewSet(viewsets.ModelViewSet):
             except ValueError, e:
                 return response.Response(dict(email=e.args), status=400)
             except IntegrityError, e:
-                return response.Response(dict(email=['User with this email already exists']), status=400)
+                return response.Response(dict(email=[_('User with this email already exists')]), status=400)
 
         if lang:
             user.set_languages([lang])

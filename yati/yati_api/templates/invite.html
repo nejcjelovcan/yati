@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% load i18n %}{% load static %}
 
-{% block title %}Viidea localize{% endblock %}
+{% block title %}{% trans "Viidea localize" %}{% endblock %}
 
 {% block head %}
   {% if not user.is_anonymous %}
@@ -27,13 +27,13 @@
   <br/>
   <div class="row">
     <div class="small-10 medium-8 large-6 small-centered medium-centered large-centered columns">
-      <h3>Hello {{invite_user.email}}!</h3>
-      <p>Welcome to Viidea Localize!<br/>
-      Please fill the following form to finish registration.</p>
+      <h3>{% trans "Hello" %} {{invite_user.email}}!</h3>
+      <p>{% trans "Welcome to Viidea Localize!" %}<br/>
+      {% trans "Please fill the following form to finish registration." %}</p>
       <form action="?" method="post">
         {% csrf_token %}
         {{ form.as_p }}
-        <input type="submit" value="Enter" class="button radius small columns" />
+        <input type="submit" value="{% trans "Enter" %}" class="button radius small columns" />
       </form>
     </div>
   </div>

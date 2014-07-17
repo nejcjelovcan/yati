@@ -110,7 +110,7 @@
             var prjlang = this._getProjectLanguage(project_id, language);
             if (prjlang) {
                 var mod = prjlang[0].get('modules').get(module_id),
-                    unitParams = {page: parseInt(page, 10)||1, filter: filter||'all', pageSize: 10};
+                    unitParams = {page: parseInt(page, 10)||1, filter: filter||'all', pageSize: 50};
                 if (!mod) {
                     this.navigate(this.link('language', project_id, language), {trigger: true});
                     return;

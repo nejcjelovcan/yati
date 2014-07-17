@@ -48,7 +48,7 @@
                                     <!-- /ko -->
                                 </td>
                                 <td class="small-6">
-                                    <input type="text" disabled="disabled" data-bind="css: {hide: is_active()}, attr: {value: yati.router.link_invite(invite_token())}"/>
+                                    <input type="text" data-bind="css: {hide: is_active()}, attr: {value: yati.router.link_invite(invite_token())}"/>
                                 </td>
                             </tr>
                     </table>

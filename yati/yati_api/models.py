@@ -102,7 +102,7 @@ def get_user_project_permissions(user, project):
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None):
         if not email:
-            raise ValueError('Users must have an email address')
+            raise ValueError(_('Users must have an email address'))
 
         user = self.model(
             email=self.normalize_email(email)
@@ -132,7 +132,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     (unless languages==null or user.is_staff==true)
     """
 
-    email = models.EmailField('email address', unique=True, validators=[validate_email])
+    email = models.EmailField(_('Email address'), unique=True, validators=[validate_email])
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
     languages = models.CharField(default=None, null=True, max_length=255)
@@ -193,7 +193,7 @@ class Project(models.Model):
 
     class Meta:
         permissions = (
-            ('contribute_project', 'Can contribute translations to a project'),
+            ('contribute_project', _('Can contribute translations to a project')),
             #('change_project', 'Can change project (invite users, languages, see logs)'),
             # ^^ change project is already automatically a permission (as is delete_project and create_project ???? - not sure)
         )
@@ -304,8 +304,10 @@ class Store(models.Model):
         # @TODO unix folder limits
         return os.path.join(get_setting('STORE_PATH'), str(self.id))
 
-    def getFilename(self, path):
-        return os.path.join(self.getDirname(), path)
+    def getFilename(self, path, createDir=False):
+        dirname = self.getDirname()
+        if createDir and not os.path.exists(dirname): os.mkdir(dirname)
+        return os.path.join(dirname, path)
 
     def read(self, path=None):
         """
@@ -381,7 +383,7 @@ class Store(models.Model):
         """
         # backup, first (unless no units or explicitly disabled)
         if self.units.all().exists() and backup:
-            self.write(fn=self.getFilename('backup_%s.po'%time.time()))
+            self.write(fn=self.getFilename('backup_%s.po'%time.time(), createDir=True))
 
         # determine pofile (default [store_path]/[id]/import.po)
         if isinstance(pofile, basestring):
@@ -623,8 +625,8 @@ class Unit(models.Model):
         # assert event and user @TODO
         result = super(Unit, self).save(*args, **kwargs)
         if event:
+            data = None
             if type(event) in (list, tuple):
-                data = None
                 try: data = event[1]
                 except IndexError: pass
                 event = event[0]
@@ -632,17 +634,17 @@ class Unit(models.Model):
         return result
 
 STORE_LOG_EVENTS = (
-    ('import', 'Imported pofile'),
-    ('export', 'Exported pofile'),
-    ('term', 'Collected terminology'),
+    ('import', _('Imported pofile')),
+    ('export', _('Exported pofile')),
+    ('term', _('Collected terminology')),
 )
 
 UNIT_LOG_EVENTS = (
-    ('import', 'Unit was imported'),
-    ('import_new', 'Unit was newly imported'),
+    ('import', _('Unit was imported')),
+    ('import_new', _('Unit was newly imported')),
     #('import_ignore', 'Unit should be imported but was changed in the database')
-    ('change', 'Unit was changed by user'),
-    ('obsolete', 'Unit was marked as obsolete'),
+    ('change', _('Unit was changed by user')),
+    ('obsolete', _('Unit was marked as obsolete')),
 )
 
 class AbstractLog(models.Model):
@@ -729,7 +731,7 @@ class Module(models.Model):
 
     class Meta:
         permissions = (
-            ('contribute_module', 'Can contribute translations to module'),
+            ('contribute_module', _('Can contribute translations to module')),
         )
 
     def __unicode__(self):
@@ -745,7 +747,7 @@ class TokenManager(models.Manager):
         return Token.objects.create(user=user, type=type, hash=random_string())
 
 TOKEN_TYPES = (
-    ('invite', 'Invite token'),
+    ('invite', _('Invite token')),
 )
 
 class Token(models.Model):
