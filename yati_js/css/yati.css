@@ -168,3 +168,16 @@ table {
 td input {
     margin: 0px !important;   
 }
+
+.module-view .search input, .module-view .search a.button {
+    margin-bottom: 0px;
+}
+
+.module-view .search a.button i {
+    margin-right: 0px;
+}
+
+.module-view .sub-nav {
+    margin-bottom: 0px;
+    margin-top: 5px;
+}
