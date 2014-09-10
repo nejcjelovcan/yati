@@ -512,6 +512,12 @@ class UnitQuerySet(models.query.QuerySet):
     def undone(self):
         return self.exclude(self.q_done())
 
+    def search(self, q):
+        q = u'%%%s%%'%unicode(q)
+        return self.extra(where=[' OR '.join(['yati_api_unit.msgid[1] ILIKE %s', 'yati_api_unit.msgid[2] ILIKE %s',
+            'yati_api_unit.msgstr[1] ILIKE %s', 'yati_api_unit.msgstr[2] ILIKE %s'])],
+            params = [q]*4)
+
     def by_msgid_levens(self, query):
         query = unicode(query)
         lswhere = []

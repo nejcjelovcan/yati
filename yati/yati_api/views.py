@@ -48,6 +48,7 @@ class UnitViewSet(viewsets.ModelViewSet):
             module_id = self.request.GET.get('module_id')
             language = self.request.GET.get('language')
             filter = self.request.GET.get('filter')
+            q = self.request.GET.get('q')
             if not language in LANGUAGES:
                 raise Exception("Must provide valid language parameter")
             qs = qs.filter(store__targetlanguage=language)
@@ -57,6 +58,8 @@ class UnitViewSet(viewsets.ModelViewSet):
                 qs = qs.done()
             if module_id:
                 qs = qs.by_module(Module.objects.get(id=module_id)).order_by('id').distinct('id')
+            if q:
+                qs = qs.search(q)
             return qs
         return qs
 

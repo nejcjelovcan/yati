@@ -115,6 +115,31 @@
                 return new yati.views.UnitsQueryParamsView(this.model().get('units').queryParams);
             }, this);
 
+            var val = null;
+            var setQvalue = _(function () {
+                this.unitsParams().q(val);
+            }).chain().bind(this).debounce(300).value();
+
+            this.searchQuery = ko.computed({
+                read: function(){
+                    return this.unitsParams().q();
+                },
+                write: function(value) {
+                    val = value;
+                    if ((value||'').length >= 3) {
+                        setQvalue();
+                    } else {
+                        val = null;
+                        this.unitsParams().q(val);
+                    }
+                }
+            }, this);
+
+            this.onClear = _(function () {
+                val = null;
+                this.unitsParams().q(null);
+            }).bind(this);
+
             initUnitSet.call(this, model);
         }
     });
@@ -176,7 +201,7 @@
 
     yati.views.UnitsQueryParamsView = yati.views.QueryParamsView.extend({
         constructor: function (model) {
-            yati.views.QueryParamsView.prototype.constructor.call(this, model, {keys: ['filter']});
+            yati.views.QueryParamsView.prototype.constructor.call(this, model, {keys: ['filter', 'q']});
         },
         pageLink: function (page) {
             return yati.router.link('module', null, null, null, this.filter() || 'all', page);

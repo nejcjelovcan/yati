@@ -23,6 +23,7 @@
             this.route(':project_id/usersadd/', 'project_users_add');
             this.route(':project_id/lang/:language/', 'language');
             this.route(':project_id/lang/:language/:module_id(/)(:filter)(/)(:page)(/)', 'module');
+            this.route(':project_id/lang/:language/:module_id/search/:q(/)(:page)(/)', 'module_search');
         },
         index: afterInit(function () {
             if (yati.app.get('projects').length == 1) {
@@ -110,9 +111,22 @@
             var prjlang = this._getProjectLanguage(project_id, language);
             if (prjlang) {
                 var mod = prjlang[0].get('modules').get(module_id),
-                    unitParams = {page: parseInt(page, 10)||1, filter: filter||'all', pageSize: 50};
+                    unitParams = {page: parseInt(page, 10)||1, filter: filter||'all', pageSize: 50, q: null};
                 if (!mod) {
                     this.navigate(this.link('language', project_id, language), {trigger: true});
+                    return;
+                }
+                yati.app.set({view: 'module', project: prjlang[0], language: prjlang[1],
+                    module: mod, unitParams: unitParams});
+            }
+        }),
+        module_search: afterInit(function (project_id, language, module_id, q, page) {
+            var prjlang = this._getProjectLanguage(project_id, language);
+            if (prjlang) {
+                var mod = prjlang[0].get('modules').get(module_id),
+                    unitParams = {page: parseInt(page, 10)||1, filter: 'all', q: q, pageSize: 50};
+                if (!mod) {
+                    this.navigate(this.ling('language', project_id, language), {trigger: true});
                     return;
                 }
                 yati.app.set({view: 'module', project: prjlang[0], language: prjlang[1],
@@ -139,6 +153,9 @@
                 case 'module':
                     return this.link('language', args[0], args[1])
                         + (args[2]||(mod && mod.get('id'))) + '/' + (args[3]||'all') + '/' + (args[4]||1) + '/';
+                case 'module_search':
+                    return this.link('language', args[0], args[1])
+                        + (args[2]||(mod && mod.get('id'))) + '/search/' + args[3] + '/' + (args[4]||1) + '/';
                 default:
                     return '/';
             }
